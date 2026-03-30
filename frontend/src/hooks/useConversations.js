@@ -1,17 +1,16 @@
 import { useState, useCallback } from 'react';
 
-export function useConversations() {
+export function useConversations(username = '기본 사용자') {
   const [conversations, setConversations] = useState([]);
   const [currentConvId, setCurrentConvId] = useState(null);
 
   const loadList = useCallback(async () => {
     try {
-      const res = await fetch('/api/conversations');
+      const res = await fetch(`/api/conversations?username=${encodeURIComponent(username)}`);
       if (!res.ok) return;
-      const data = await res.json();
-      setConversations(data);
+      setConversations(await res.json());
     } catch {}
-  }, []);
+  }, [username]);
 
   const loadConversation = useCallback(async (id) => {
     const res = await fetch(`/api/conversations/${id}`);
@@ -35,19 +34,13 @@ export function useConversations() {
     const res = await fetch('/api/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title.slice(0, 40), model: model || 'qwen' }),
+      body: JSON.stringify({ title: title.slice(0, 40), model: model || 'qwen', username }),
     });
     return res.json();
-  }, []);
+  }, [username]);
 
   return {
-    conversations,
-    currentConvId,
-    setCurrentConvId,
-    loadList,
-    loadConversation,
-    deleteConversation,
-    saveMessage,
-    createConversation,
+    conversations, currentConvId, setCurrentConvId,
+    loadList, loadConversation, deleteConversation, saveMessage, createConversation,
   };
 }

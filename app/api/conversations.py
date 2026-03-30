@@ -22,6 +22,7 @@ router = APIRouter()
 class ConvCreate(BaseModel):
     title: str = "새 대화"
     model: str = "qwen"
+    username: Optional[str] = "기본 사용자"
 
 class ConvUpdate(BaseModel):
     title: str
@@ -34,18 +35,19 @@ class MessageCreate(BaseModel):
 
 # ── 목록 ────────────────────────────────────────────────────────────────────
 @router.get("/conversations")
-def list_conversations():
+def list_conversations(username: str = "기본 사용자"):
     with db_cursor() as cur:
         cur.execute("""
-            SELECT c.id, c.title, c.model, c.created_at, c.updated_at,
+            SELECT c.id, c.title, c.model, c.username, c.created_at, c.updated_at,
                    COUNT(m.id) AS message_count,
                    MAX(m.created_at) AS last_message_at
             FROM conversations c
             LEFT JOIN chat_messages m ON m.conversation_id = c.id
+            WHERE c.username = %s
             GROUP BY c.id
             ORDER BY c.updated_at DESC
             LIMIT 100
-        """)
+        """, (username,))
         rows = cur.fetchall()
     return [dict(r) for r in rows]
 
@@ -54,8 +56,8 @@ def list_conversations():
 def create_conversation(data: ConvCreate):
     with db_cursor() as cur:
         cur.execute(
-            "INSERT INTO conversations (title, model) VALUES (%s, %s) RETURNING id, title, model, created_at",
-            (data.title, data.model)
+            "INSERT INTO conversations (title, model, username) VALUES (%s, %s, %s) RETURNING id, title, model, username, created_at",
+            (data.title, data.model, data.username or "기본 사용자")
         )
         row = cur.fetchone()
     return dict(row)
