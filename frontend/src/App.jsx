@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import SourcePanel from './components/SourcePanel';
@@ -11,6 +11,7 @@ import NotificationBell from './components/NotificationBell';
 import QuickSearchModal from './components/QuickSearchModal';
 import ShareView from './components/ShareView';
 import ColumnExportModal from './components/ColumnExportModal';
+import LoginModal from './components/LoginModal';
 import { useConversations } from './hooks/useConversations';
 import { useStream } from './hooks/useStream';
 
@@ -40,6 +41,9 @@ if (shareMatch) {
 }
 
 export default function App() {
+  const [authToken,   setAuthToken]   = useState(() => localStorage.getItem('auth_token') || '');
+  const [username,    setUsername]    = useState(() => localStorage.getItem('username') || '');
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem('display_name') || '');
   const [qwenModel, setQwenModel] = useState(() => localStorage.getItem('qwen_model') || '35b');
   const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('anthropic_api_key') || '');
   const [compareType, setCompareType] = useState('none'); // 'none' | 'qwen27' | 'claude'
@@ -58,13 +62,14 @@ export default function App() {
   const [showAdmin,        setShowAdmin]        = useState(false);
   const [showQuickSearch,   setShowQuickSearch]   = useState(false);
   const [showColumnExport,  setShowColumnExport]  = useState(false);
+  const [extractedColumns,  setExtractedColumns]  = useState(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   const {
     conversations, currentConvId, setCurrentConvId,
     loadList, loadConversation, deleteConversation,
     saveMessage, createConversation,
-  } = useConversations();
+  } = useConversations(username);
 
   const { stream } = useStream();
 
@@ -170,7 +175,10 @@ export default function App() {
     return conv.id;
   }, [currentConvId, qwenModel]);
 
+  const sendingRef = useRef(false);
   async function handleSend(text, target) {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     const toLeft = !compareMode || target !== 'right';
     const toRight = compareMode && target !== 'left';
 
@@ -196,7 +204,11 @@ export default function App() {
 
     if (toRight) {
       if (compareType === 'qwen27') {
-        tasks.push(streamPanel({ side: 'right', text, model: 'qwen', qwenModelOverride: '27b', convId, isClaude: false }));
+        // 왼쪽이 RAG 캐시를 먼저 채우도록 1.5초 지연 후 오른쪽 시작
+        tasks.push((async () => {
+          await new Promise(r => setTimeout(r, 1500));
+          await streamPanel({ side: 'right', text, model: 'qwen', qwenModelOverride: '27b', convId, isClaude: false });
+        })());
       } else {
         tasks.push(streamPanel({ side: 'right', text, model: 'claude', qwenModelOverride: qwenModel, convId, isClaude: true }));
       }
@@ -204,6 +216,7 @@ export default function App() {
 
     await Promise.all(tasks);
     setTimeout(() => loadList(), 800);
+    sendingRef.current = false;
   }
 
   async function streamPanel({ side, text, model, qwenModelOverride, convId, isClaude }) {
@@ -256,9 +269,16 @@ export default function App() {
         ));
       },
       onDone: async (fullText) => {
+        // 먼저 content 업데이트 (streaming: true 유지)
         setMsgs(m => m.map(msg =>
-          msg.id === msgId ? { ...msg, content: fullText, status: null, streaming: false } : msg
+          msg.id === msgId ? { ...msg, content: fullText, status: null, streaming: true } : msg
         ));
+        // 다음 틱에서 streaming: false로 전환해서 정적 렌더링 트리거
+        setTimeout(() => {
+          setMsgs(m => m.map(msg =>
+            msg.id === msgId ? { ...msg, streaming: false } : msg
+          ));
+        }, 50);
         setTyping(false);
         // Save assistant message
         const saveModel = model === 'claude' ? 'claude' : qwenModelOverride;
@@ -275,6 +295,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', position: 'relative' }}>
+      {!authToken && <LoginModal onLogin={({ token, username: u, displayName: d }) => { setAuthToken(token); setUsername(u); setDisplayName(d); }} />}
       <Sidebar
         conversations={conversations}
         currentConvId={currentConvId}
@@ -290,6 +311,14 @@ export default function App() {
         onToggleDark={() => setDarkMode(d => !d)}
         onOpenSkills={() => setShowSkills(true)}
         onOpenDocs={() => setShowDocs(true)}
+        displayName={displayName}
+        onLogout={async () => {
+          await fetch('/api/auth/logout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: authToken }) });
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('username');
+          localStorage.removeItem('display_name');
+          setAuthToken(''); setUsername(''); setDisplayName('');
+        }}
         onOpenStandards={() => setShowStandards(true)}
         onOpenAdmin={() => setShowAdmin(true)}
         onRenameConv={async (id, title) => {
@@ -332,6 +361,14 @@ export default function App() {
           await fetch(`/api/messages/${msgId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content }) });
           setLeftMessages(m => m.map(x => x.id === msgId ? {...x, content} : x));
           setRightMessages(m => m.map(x => x.id === msgId ? {...x, content} : x));
+        }}
+        onRegenerate={async () => {
+          const lastUser = leftMessages.slice().reverse().find(m => m.role === 'user');
+          if (lastUser) handleSend(lastUser.content, 'left');
+        }}
+        onExtractColumns={(content) => {
+          setExtractedColumns(content);
+          setShowColumnExport(true);
         }}
         onFeedback={async (msg, type) => {
           await fetch('/api/admin/feedback', {

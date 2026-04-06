@@ -17,6 +17,8 @@ from .api.admin import router as admin_router
 from .api.notifications import router as notif_router
 from .api.extras import router as extras_router
 from .api.column_export import router as column_router
+from .api.bookmarks import router as bookmarks_router
+from .api.auth import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -69,6 +71,8 @@ app.include_router(admin_router, prefix="/api")
 app.include_router(notif_router, prefix="/api")
 app.include_router(extras_router, prefix="/api")
 app.include_router(column_router, prefix="/api")
+app.include_router(bookmarks_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
