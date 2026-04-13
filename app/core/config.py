@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # LLM (vLLM 로드밸런서)
     vllm_url: str = "http://localhost:8082/v1"
     vllm_model: str = "Qwen3.6-35B"        # MoE 35B (현재)
-    vllm_model_dense: str = "Nemotron-3-Nano-30B"    # Nemotron-3 Nano 30B MoE (GX10-1 vLLM)
+    vllm_model_dense: str = "Mixtral-8x7B"            # Mixtral 8x7B MoE (GX10-1)
     vllm_url_dense: str = "http://localhost:8083/v1" # Nginx → GX10-1:8081
     vllm_max_tokens: int = 2048
     vllm_temperature: float = 0.1  # 낮을수록 할루시네이션 감소
