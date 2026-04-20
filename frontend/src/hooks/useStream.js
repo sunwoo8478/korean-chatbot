@@ -50,13 +50,16 @@ export function useStream() {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        const parts = buf.split('\n\n');
-        buf = parts.pop();
+        const parts = buf.split(/\r?\n\r?\n/);
+        buf = parts.pop() ?? '';
 
         for (const part of parts) {
-          if (!part.startsWith('data: ')) continue;
+          const trimmed = part.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
           let evt;
-          try { evt = JSON.parse(part.slice(6)); } catch { continue; }
+          try { evt = JSON.parse(jsonStr); } catch { continue; }
 
           if (evt.type === 'sources' && evt.data?.length) {
             onSources?.(evt.data);

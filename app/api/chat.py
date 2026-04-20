@@ -32,25 +32,28 @@ def _qwen_config(qwen_model: str) -> tuple[str, str]:
 
 async def _stream_qwen(rag: dict, qwen_model: str = "35b", history: list = None):
     url, model_name = _qwen_config(qwen_model)
-    is_ollama = "11434" in url or "11435" in url or qwen_model == "27b"
+    is_ollama = "11434" in url or "11435" in url
+    is_mixtral = "Mixtral" in model_name
 
     # 시스템 프롬프트 → 히스토리(최대 6턴) → 현재 질문 순서로 메시지 구성
     messages = [{"role": "system", "content": rag["system_prompt"]}]
     if history:
         for h in history[-6:]:   # 최근 6턴만 (토큰 절약)
             messages.append({"role": h["role"], "content": h["content"]})
-    messages.append({"role": "user", "content": rag["user_message"]})
+    user_msg = rag["user_message"]
+    if is_mixtral:
+        user_msg = "[반드시 한국어로만 답변하세요. Answer in Korean only.]\n\n" + user_msg
+    messages.append({"role": "user", "content": user_msg})
 
-    # 활성 스킬 — vLLM tool calling 또는 프롬프트 주입 방식
-    tools = [] if is_ollama else get_active_tools()
-    # _skill_id는 내부용 — vLLM에 보내기 전 제거
+    # 활성 스킬 — Mixtral은 tool calling 미지원, Ollama도 미지원
+    tools = [] if (is_ollama or is_mixtral) else get_active_tools()
     clean_tools = [{k: v for k, v in t.items() if k != "_skill_id"} for t in tools]
     skill_map   = {t["function"]["name"]: t["_skill_id"] for t in tools}
 
     payload = {
         "model": model_name,
         "messages": messages,
-        "max_tokens": settings.vllm_max_tokens,
+        "max_tokens": 1024 if is_mixtral else settings.vllm_max_tokens,
         "temperature": settings.vllm_temperature,
         "stream": True,
     }
@@ -59,7 +62,8 @@ async def _stream_qwen(rag: dict, qwen_model: str = "35b", history: list = None)
         payload["tool_choice"] = "auto"
     if is_ollama:
         payload["options"] = {"think": False, "temperature": 0.3}
-    else:
+    elif not is_mixtral:
+        # Qwen 전용 파라미터 — Mixtral에는 전달하지 않음
         payload["chat_template_kwargs"] = {"enable_thinking": False}
 
     in_think = False
@@ -90,8 +94,11 @@ async def _stream_qwen(rag: dict, qwen_model: str = "35b", history: list = None)
                         return tool_call_buf
         return None
 
-    # 1차 호출
-    tool_calls = await _call_llm(messages, payload)
+    # 툴이 없으면 _call_llm 건너뛰고 바로 스트리밍
+    if not clean_tools:
+        tool_calls = None
+    else:
+        tool_calls = await _call_llm(messages, payload)
 
     if tool_calls and skill_map:
         # 스킬 실행 → 결과를 메시지에 추가 → 2차 호출
@@ -128,23 +135,27 @@ async def _stream_qwen(rag: dict, qwen_model: str = "35b", history: list = None)
         async with httpx.AsyncClient(timeout=300) as client:
             async with client.stream("POST", f"{url}/chat/completions", json=payload) as resp:
                 async for line in resp.aiter_lines():
-                    if line.startswith("data: ") and line != "data: [DONE]":
-                        try: data = json.loads(line[6:])
-                        except: continue
-                        delta = data["choices"][0]["delta"].get("content", "")
-                        if not delta: continue
-                        if "<think>" in delta: in_think = True
-                        if in_think:
-                            if "</think>" in delta:
-                                in_think = False
-                                after = delta.split("</think>", 1)[-1]
-                                if after.strip(): yield after
-                            continue
-                        skip = ["Here's a thinking","Let me think","thinking process",
-                                "Analyze User","Step 1:","Step 2:","Step 3:",
-                                "Synthesize","Draft ","Verify against"]
-                        if any(p in delta for p in skip): continue
-                        yield delta
+                    if not line: continue
+                    if line == "data: [DONE]": continue
+                    if not line.startswith("data: "): continue
+                    try: data = json.loads(line[6:])
+                    except: continue
+                    choices = data.get("choices", [])
+                    if not choices: continue
+                    delta = choices[0].get("delta", {}).get("content") or ""
+                    if not delta: continue
+                    if "<think>" in delta: in_think = True
+                    if in_think:
+                        if "</think>" in delta:
+                            in_think = False
+                            after = delta.split("</think>", 1)[-1]
+                            if after.strip(): yield after
+                        continue
+                    skip = ["Here's a thinking","Let me think","thinking process",
+                            "Analyze User","Step 1:","Step 2:","Step 3:",
+                            "Synthesize","Draft ","Verify against"]
+                    if any(p in delta for p in skip): continue
+                    yield delta
 
 # ── Claude 토큰 스트림 ──────────────────────────────────────────────────────
 async def _stream_claude(rag: dict, api_key: str = ""):
