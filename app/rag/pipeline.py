@@ -1,5 +1,28 @@
 from typing import Optional
+import time, hashlib
 from .embedder import embed_query
+
+# ── RAG 결과 캐시 (5분 TTL) ───────────────────────────────────────────────────
+_rag_cache: dict = {}
+_CACHE_TTL = 300
+
+def _cache_key(query: str) -> str:
+    return hashlib.md5(query.strip().lower().encode()).hexdigest()
+
+def _cache_get(query: str):
+    key = _cache_key(query)
+    if key in _rag_cache:
+        ts, val = _rag_cache[key]
+        if time.time() - ts < _CACHE_TTL:
+            return val
+        del _rag_cache[key]
+    return None
+
+def _cache_set(query: str, val):
+    if len(_rag_cache) > 200:
+        oldest = min(_rag_cache, key=lambda k: _rag_cache[k][0])
+        del _rag_cache[oldest]
+    _rag_cache[_cache_key(query)] = (time.time(), val)
 from .retriever import retrieve
 from .reranker import rerank
 from .history import search_history, format_history_context
@@ -267,6 +290,11 @@ def group_context(docs: list[dict]) -> str:
 
 
 def run(query: str, conv_id: Optional[str] = None) -> dict:
+    # 캐시 확인
+    cached = _cache_get(query)
+    if cached:
+        return {**cached, "cached": True}
+
     embedding = embed_query(query)
 
     # 과거 유사 대화 검색 (다른 세션에서 같은 주제를 물어본 적 있으면 참고)
@@ -311,10 +339,13 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     else:
         user_message = f"질문: {query}"
 
-    return {
+    result = {
         "context": full_context,
         "docs": final_docs,
-        "history": history,   # 참고한 과거 대화
+        "history": history,
         "system_prompt": SYSTEM_PROMPT,
         "user_message": user_message,
+        "cached": False,
     }
+    _cache_set(query, result)
+    return result
