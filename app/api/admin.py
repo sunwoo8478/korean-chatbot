@@ -354,6 +354,75 @@ def delete_domain(domain_id: int):
     return {"ok": True}
 
 
+# ── 자동완성 ──────────────────────────────────────────────────────────────────
+@router.get("/admin/autocomplete")
+def autocomplete(q: str = Query(""), limit: int = 10):
+    if not q or len(q) < 1:
+        return []
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT name, type FROM (
+                SELECT term_name AS name, '용어' AS type FROM std_term WHERE term_name ILIKE %s
+                UNION ALL
+                SELECT term_abbr, '약어' FROM std_term WHERE term_abbr ILIKE %s AND term_abbr != '' AND term_abbr != '-'
+                UNION ALL
+                SELECT word_name, '단어' FROM std_word WHERE word_name ILIKE %s
+                UNION ALL
+                SELECT domain_name, '도메인' FROM std_domain WHERE domain_name ILIKE %s
+            ) t
+            ORDER BY
+                CASE WHEN name = %s THEN 0 WHEN name ILIKE %s THEN 1 ELSE 2 END,
+                name
+            LIMIT %s
+        """, (f"{q}%", f"{q}%", f"{q}%", f"{q}%", q, f"{q}%", limit))
+        return [dict(r) for r in cur.fetchall()]
+
+
+# ── 롤백 ──────────────────────────────────────────────────────────────────────
+@router.post("/admin/rollback/{history_id}")
+def rollback_change(history_id: int):
+    """변경 이력의 old_data로 해당 항목을 복원"""
+    import json as _json
+    with db_cursor() as cur:
+        cur.execute("SELECT * FROM term_change_history WHERE id=%s", (history_id,))
+        hist = cur.fetchone()
+        if not hist:
+            raise HTTPException(404, "이력을 찾을 수 없습니다.")
+
+        hist = dict(hist)
+        if not hist.get("old_data"):
+            raise HTTPException(400, "복원할 이전 데이터가 없습니다. (신규 생성 항목)")
+
+        old = _json.loads(hist["old_data"]) if isinstance(hist["old_data"], str) else hist["old_data"]
+        table = hist["table_name"]
+        rid   = hist["record_id"]
+
+        if table == "std_term":
+            cur.execute("""
+                UPDATE std_term SET term_name=%s, term_abbr=%s, domain_name=%s,
+                term_desc=%s, admin_code_name=%s, org_name=%s WHERE id=%s
+            """, (old.get("term_name"), old.get("term_abbr"), old.get("domain_name"),
+                  old.get("term_desc"), old.get("admin_code_name"), old.get("org_name"), rid))
+        elif table == "std_word":
+            cur.execute("""
+                UPDATE std_word SET word_name=%s, word_abbr=%s, word_eng_name=%s,
+                word_desc=%s WHERE id=%s
+            """, (old.get("word_name"), old.get("word_abbr"), old.get("word_eng_name"),
+                  old.get("word_desc"), rid))
+        elif table == "std_domain":
+            cur.execute("""
+                UPDATE std_domain SET domain_name=%s, domain_desc=%s, data_type=%s,
+                data_length=%s WHERE id=%s
+            """, (old.get("domain_name"), old.get("domain_desc"), old.get("data_type"),
+                  old.get("data_length"), rid))
+        else:
+            raise HTTPException(400, f"지원하지 않는 테이블: {table}")
+
+        _log_history(cur, table, rid, "rollback", new=old)
+
+    return {"ok": True, "restored": old}
+
+
 # ── 변경 이력 ─────────────────────────────────────────────────────────────────
 @router.get("/admin/history")
 def get_history(table: str = "", limit: int = 100):

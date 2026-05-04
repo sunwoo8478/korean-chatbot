@@ -15,6 +15,7 @@ const TABS = [
   { key: 'logs',      label: '로그' },
   { key: 'history',   label: '변경 이력' },
   { key: 'report',    label: 'DB 리포트' },
+  { key: 'users',     label: '사용자 관리' },
   { key: 'system',    label: '시스템' },
 ];
 
@@ -102,6 +103,7 @@ export default function AdminPanel({ onClose }) {
           {tab==='logs'      && <Logs      onDetail={setDetail}/>}
           {tab==='history'   && <ChangeHistory onDetail={setDetail}/>}
           {tab==='report'    && <DBReport/>}
+          {tab==='users'     && <UserManage/>}
           {tab==='system'    && <SystemInfo/>}
         </div>
         <DetailPanel detail={detail} onClose={()=>setDetail(null)}/>
@@ -809,7 +811,7 @@ function ChangeHistory({ onDetail }) {
         <div style={{border:'1px solid hsl(var(--border))',borderRadius:10,overflow:'hidden'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:12.5}}>
             <thead><tr style={{background:'hsl(var(--muted))'}}>
-              {['작업','테이블','항목ID','변경일시'].map(h=><th key={h} style={S.th}>{h}</th>)}
+              {['작업','테이블','항목ID','변경일시','복원'].map(h=><th key={h} style={S.th}>{h}</th>)}
             </tr></thead>
             <tbody>{items.map((item,i)=>(
               <tr key={item.id} style={{...S.row}}
@@ -827,6 +829,12 @@ function ChangeHistory({ onDetail }) {
                 <td style={S.td}>{TABLE_LABEL[item.table_name]||item.table_name}</td>
                 <td style={S.td}>{item.record_id}</td>
                 <td style={{...S.td,color:'hsl(var(--muted-foreground))',fontSize:11}}>{new Date(item.changed_at).toLocaleString('ko-KR')}</td>
+                <td style={S.td}>
+                  {item.action !== 'create' && item.old_data && (
+                    <button onClick={async e=>{e.stopPropagation();if(!confirm('이 시점으로 복원할까요?'))return;await fetch(`/api/admin/rollback/${item.id}`,{method:'POST'});alert('복원 완료');}}
+                      style={{...S.btn('#d97706'),padding:'3px 8px',fontSize:11}}>복원</button>
+                  )}
+                </td>
               </tr>
             ))}</tbody>
           </table>
@@ -894,6 +902,68 @@ function DBReport() {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// ── 사용자 관리 ───────────────────────────────────────────────────────────────
+function UserManage() {
+  const [users, setUsers]   = useState([]);
+  const [newPw, setNewPw]   = useState({});
+
+  const load = async () => { const r = await fetch('/api/auth/users'); setUsers(await r.json()); };
+  useEffect(() => { load(); }, []);
+
+  const del = async (id) => {
+    if (!confirm('이 사용자를 삭제할까요?')) return;
+    await fetch('/api/auth/users/' + id, { method:'DELETE' });
+    load();
+  };
+
+  const changePw = async (id) => {
+    const pw = newPw[id] || '';
+    if (pw.length < 4) { alert('비밀번호는 4자 이상이어야 합니다.'); return; }
+    await fetch('/api/auth/users/' + id + '/password', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pw }),
+    });
+    setNewPw(p => ({ ...p, [id]: '' }));
+    alert('비밀번호가 변경됐습니다.');
+  };
+
+  return (
+    <div>
+      <SectionTitle>사용자 관리</SectionTitle>
+      {users.length === 0 ? (
+        <p style={{textAlign:'center',padding:32,color:'hsl(var(--muted-foreground))',fontSize:13}}>등록된 사용자 없음</p>
+      ) : (
+        <div style={{border:'1px solid hsl(var(--border))',borderRadius:10,overflow:'hidden'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead><tr style={{background:'hsl(var(--muted))'}}>
+              {['아이디','이름','가입일','마지막 로그인','비밀번호 변경',''].map(h=><th key={h} style={S.th}>{h}</th>)}
+            </tr></thead>
+            <tbody>{users.map(u=>(
+              <tr key={u.id}>
+                <td style={S.td}>{u.username}</td>
+                <td style={S.td}>{u.display_name}</td>
+                <td style={{...S.td,fontSize:11,color:'hsl(var(--muted-foreground))'}}>{new Date(u.created_at).toLocaleDateString('ko-KR')}</td>
+                <td style={{...S.td,fontSize:11,color:'hsl(var(--muted-foreground))'}}>{u.last_login ? new Date(u.last_login).toLocaleString('ko-KR') : '-'}</td>
+                <td style={S.td}>
+                  <div style={{display:'flex',gap:4}}>
+                    <input type="password" placeholder="새 비밀번호"
+                      value={newPw[u.id]||''} onChange={e=>setNewPw(p=>({...p,[u.id]:e.target.value}))}
+                      style={{...S.input,width:120,padding:'4px 8px',fontSize:12}}/>
+                    <button onClick={()=>changePw(u.id)} style={{...S.btn('hsl(var(--muted))','hsl(var(--foreground))'),padding:'4px 10px',fontSize:11}}>변경</button>
+                  </div>
+                </td>
+                <td style={S.td}>
+                  <button onClick={()=>del(u.id)} style={{...S.btn('hsl(var(--muted))','#dc2626'),padding:'4px 10px',fontSize:11}}>삭제</button>
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       )}
     </div>
   );
