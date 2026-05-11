@@ -1,30 +1,59 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { XIcon, SearchIcon } from 'lucide-react';
+import { XIcon, SearchIcon, BookmarkIcon } from 'lucide-react';
 
 const TYPE_LABEL = { term:'공통표준용어', word:'공통표준단어', domain:'공통표준도메인', dict:'표준국어대사전' };
 const TYPE_COLOR = { term:'#2563eb', word:'#059669', domain:'#7c3aed', dict:'#b45309' };
-
-const TERM_COLS   = ['name','abbr','domain','desc'];
-const WORD_COLS   = ['name','abbr','domain','desc'];
-const DOMAIN_COLS = ['name','abbr','domain','desc'];
-const COL_LABEL   = { name:'이름', abbr:'약어/품사', domain:'도메인/어원', desc:'설명/뜻풀이' };
+const COL_LABEL  = { name:'이름', abbr:'약어/품사', domain:'도메인/어원', desc:'설명/뜻풀이' };
 
 export default function QuickSearchModal({ onClose }) {
-  const [q, setQ]             = useState('');
-  const [results, setResults] = useState(null);
+  const [q, setQ]               = useState('');
+  const [results, setResults]   = useState(null);
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]   = useState(false);
   const [activeType, setActiveType] = useState('all');
-  const [mode, setMode] = useState('title');
-  const inputRef = useRef(null);
+  const [mode, setMode]         = useState('title');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug, setShowSug]   = useState(false);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const inputRef    = useRef(null);
   const debounceRef = useRef(null);
+  const sugRef      = useRef(null);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    inputRef.current?.focus();
+    fetch('/api/bookmarks').then(r => r.json()).then(setBookmarks);
+  }, []);
+
+  useEffect(() => {
+    if (!q || q.length < 1) { setSuggestions([]); setShowSug(false); return; }
+    const t = setTimeout(async () => {
+      const r = await fetch('/api/admin/autocomplete?q=' + encodeURIComponent(q));
+      const data = await r.json();
+      setSuggestions(data);
+      setShowSug(data.length > 0);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const addBookmark = async (row) => {
+    const tableName = row._type === 'term' ? 'std_term' : row._type === 'word' ? 'std_word' : 'std_domain';
+    await fetch('/api/bookmarks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: row.id, table_name: tableName, name: row.name, type: row._type, data: row }),
+    });
+    fetch('/api/bookmarks').then(r => r.json()).then(setBookmarks);
+  };
+
+  const removeBookmark = async (id) => {
+    await fetch('/api/bookmarks/' + id, { method: 'DELETE' });
+    setBookmarks(prev => prev.filter(x => x.id !== id));
+  };
 
   const search = useCallback(async (query, searchMode) => {
     if (!query.trim()) { setResults(null); return; }
     setLoading(true);
-    const r = await fetch(`/api/admin/search-all?q=${encodeURIComponent(query)}&mode=${searchMode}`);
+    const r = await fetch('/api/admin/search-all?q=' + encodeURIComponent(query) + '&mode=' + searchMode);
     const data = await r.json();
     setResults(data);
     setActiveType('all');
@@ -42,120 +71,190 @@ export default function QuickSearchModal({ onClose }) {
     return () => clearTimeout(debounceRef.current);
   }, [q, mode, search]);
 
-  const allRows = results
-    ? [
-        ...results.terms.map(r => ({...r, _type:'term'})),
-        ...results.words.map(r => ({...r, _type:'word'})),
-        ...results.domains.map(r => ({...r, _type:'domain'})),
-        ...(results.dict||[]).map(r => ({...r, _type:'dict'})),
-      ]
-    : [];
+  const allRows = results ? [
+    ...results.terms.map(r => ({ ...r, _type: 'term' })),
+    ...results.words.map(r => ({ ...r, _type: 'word' })),
+    ...results.domains.map(r => ({ ...r, _type: 'domain' })),
+    ...(results.dict || []).map(r => ({ ...r, _type: 'dict' })),
+  ] : [];
 
-  const filtered = activeType === 'all'
-    ? allRows
-    : allRows.filter(r => r._type === activeType);
+  const filtered = activeType === 'all' ? allRows : allRows.filter(r => r._type === activeType);
 
-  const s = {
-    overlay: { position:'fixed',inset:0,background:'rgba(0,0,0,.45)',backdropFilter:'blur(3px)',zIndex:500,display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:80 },
-    modal:   { background:'hsl(var(--background))',borderRadius:14,width:820,maxWidth:'95vw',maxHeight:'78vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.2)',overflow:'hidden' },
-    tab:     (a) => ({ padding:'5px 14px',border:'none',background:a?'hsl(var(--primary))':'transparent',color:a?'hsl(var(--primary-foreground))':'hsl(var(--muted-foreground))',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',borderRadius:'6px 6px 0 0',whiteSpace:'nowrap' }),
-    th:      { padding:'8px 12px',textAlign:'left',fontWeight:600,fontSize:11,color:'hsl(var(--muted-foreground))',whiteSpace:'nowrap',background:'hsl(var(--muted))' },
-    td:      { padding:'7px 12px',fontSize:12.5,borderTop:'1px solid hsl(var(--border))',maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' },
+  const S = {
+    overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,.45)', backdropFilter:'blur(3px)', zIndex:500, display:'flex', alignItems:'flex-start', justifyContent:'center', paddingTop:80 },
+    modal:   { background:'hsl(var(--background))', borderRadius:14, width:820, maxWidth:'95vw', maxHeight:'78vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' },
+    tab:     (a) => ({ padding:'5px 14px', border:'none', background: a ? 'hsl(var(--primary))' : 'transparent', color: a ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', borderRadius:'6px 6px 0 0', whiteSpace:'nowrap' }),
+    th:      { padding:'8px 12px', textAlign:'left', fontWeight:600, fontSize:11, color:'hsl(var(--muted-foreground))', whiteSpace:'nowrap', background:'hsl(var(--muted))' },
+    td:      { padding:'7px 12px', fontSize:12.5, borderTop:'1px solid hsl(var(--border))', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' },
   };
 
   return (
-    <div style={s.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={s.modal}>
+    <div style={S.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={S.modal}>
+
         {/* 검색창 */}
-        <div style={{padding:'14px 16px',borderBottom:'1px solid hsl(var(--border))'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <SearchIcon size={16} style={{color:'hsl(var(--muted-foreground))',flexShrink:0}}/>
+        <div style={{ padding:'14px 16px', borderBottom:'1px solid hsl(var(--border))', position:'relative', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <SearchIcon size={16} style={{ color:'hsl(var(--muted-foreground))', flexShrink:0 }}/>
             <input
               ref={inputRef}
-              style={{flex:1,border:'none',outline:'none',fontSize:15,background:'transparent',color:'hsl(var(--foreground))',fontFamily:'inherit'}}
+              style={{ flex:1, border:'none', outline:'none', fontSize:15, background:'transparent', color:'hsl(var(--foreground))', fontFamily:'inherit' }}
               placeholder="용어명, 영문약어, 도메인명 통합 검색..."
               value={q}
-              onChange={e=>setQ(e.target.value)}
-              onKeyDown={e=>e.key==='Escape'&&onClose()}
+              onChange={e => { setQ(e.target.value); setShowBookmarks(false); }}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { if (showSug) setShowSug(false); else onClose(); }
+                if (e.key === 'ArrowDown' && showSug) sugRef.current?.querySelector('button')?.focus();
+              }}
             />
-            {loading && <span style={{fontSize:11,color:'hsl(var(--muted-foreground))'}}>검색 중...</span>}
-            <div style={{display:'flex',border:'1px solid hsl(var(--border))',borderRadius:7,overflow:'hidden',flexShrink:0}}>
-              {[['title','제목'],['content','내용'],['all','전체']].map(([v,l])=>(
-                <button key={v} onClick={()=>setMode(v)}
-                  style={{padding:'4px 10px',border:'none',borderRight:v!=='all'?'1px solid hsl(var(--border))':'none',background:mode===v?'hsl(var(--primary))':'transparent',color:mode===v?'hsl(var(--primary-foreground))':'hsl(var(--muted-foreground))',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+            {loading && <span style={{ fontSize:11, color:'hsl(var(--muted-foreground))' }}>검색 중...</span>}
+            <button
+              onClick={() => setShowBookmarks(prev => !prev)}
+              title="즐겨찾기"
+              style={{ border:'1px solid hsl(var(--border))', borderRadius:7, padding:'4px 8px', background: showBookmarks ? 'hsl(var(--primary))' : 'transparent', color: showBookmarks ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))', cursor:'pointer', display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, flexShrink:0 }}
+            >
+              <BookmarkIcon size={12}/>
+              {bookmarks.length > 0 ? bookmarks.length : ''}
+            </button>
+            <div style={{ display:'flex', border:'1px solid hsl(var(--border))', borderRadius:7, overflow:'hidden', flexShrink:0 }}>
+              {[['title','제목'], ['content','내용'], ['all','전체']].map(([v, l]) => (
+                <button key={v} onClick={() => setMode(v)}
+                  style={{ padding:'4px 10px', border:'none', borderRight: v !== 'all' ? '1px solid hsl(var(--border))' : 'none', background: mode === v ? 'hsl(var(--primary))' : 'transparent', color: mode === v ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                   {l}
                 </button>
               ))}
             </div>
-            <button onClick={onClose} style={{border:'none',background:'none',cursor:'pointer',color:'hsl(var(--muted-foreground))',display:'flex'}}><XIcon size={16}/></button>
+            <button onClick={onClose} style={{ border:'none', background:'none', cursor:'pointer', color:'hsl(var(--muted-foreground))', display:'flex' }}>
+              <XIcon size={16}/>
+            </button>
           </div>
+
+          {/* 자동완성 드롭다운 */}
+          {showSug && suggestions.length > 0 && (
+            <div ref={sugRef} style={{ position:'absolute', top:'100%', left:16, right:16, background:'hsl(var(--background))', border:'1px solid hsl(var(--border))', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,.12)', zIndex:20, overflow:'hidden' }}>
+              {suggestions.map((sug, i) => (
+                <button key={i}
+                  onClick={() => { setQ(sug.name); setShowSug(false); search(sug.name, mode); }}
+                  style={{ width:'100%', padding:'8px 14px', border:'none', background:'transparent', textAlign:'left', cursor:'pointer', fontSize:13, fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center', color:'hsl(var(--foreground))' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'hsl(var(--muted))'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>{sug.name}</span>
+                  <span style={{ fontSize:10, color:'hsl(var(--muted-foreground))', background:'hsl(var(--muted))', padding:'1px 6px', borderRadius:4 }}>{sug.type}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* 즐겨찾기 패널 */}
+        {showBookmarks && (
+          <div style={{ borderBottom:'1px solid hsl(var(--border))', padding:'12px 16px', background:'hsl(var(--muted))', maxHeight:180, overflowY:'auto', flexShrink:0 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:'hsl(var(--muted-foreground))', marginBottom:8, textTransform:'uppercase', letterSpacing:.4 }}>
+              즐겨찾기 {bookmarks.length}건
+            </p>
+            {bookmarks.length === 0 ? (
+              <p style={{ fontSize:12, color:'hsl(var(--muted-foreground))' }}>검색 결과에서 북마크 버튼으로 추가하세요</p>
+            ) : (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {bookmarks.map(b => (
+                  <div key={b.id} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', background:'hsl(var(--background))', border:'1px solid hsl(var(--border))', borderRadius:99, fontSize:12 }}>
+                    <button
+                      onClick={() => { setQ(b.name); setShowBookmarks(false); search(b.name, mode); }}
+                      style={{ border:'none', background:'none', cursor:'pointer', fontSize:12, fontFamily:'inherit', color:'hsl(var(--foreground))' }}
+                    >{b.name}</button>
+                    <button
+                      onClick={() => removeBookmark(b.id)}
+                      style={{ border:'none', background:'none', cursor:'pointer', color:'hsl(var(--muted-foreground))', fontSize:11, padding:0, lineHeight:1 }}
+                    >x</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 필터 탭 */}
         {results && (
-          <div style={{display:'flex',gap:2,padding:'8px 16px 0',borderBottom:'1px solid hsl(var(--border))',flexShrink:0,alignItems:'center'}}>
-            <button style={s.tab(activeType==='all')} onClick={()=>setActiveType('all')}>
+          <div style={{ display:'flex', gap:2, padding:'8px 16px 0', borderBottom:'1px solid hsl(var(--border))', flexShrink:0, alignItems:'center' }}>
+            <button style={S.tab(activeType === 'all')} onClick={() => setActiveType('all')}>
               전체 {results.total}건
             </button>
             {results.terms.length > 0 && (
-              <button style={s.tab(activeType==='term')} onClick={()=>setActiveType('term')}>
+              <button style={S.tab(activeType === 'term')} onClick={() => setActiveType('term')}>
                 용어 {results.terms.length}건
               </button>
             )}
             {results.words.length > 0 && (
-              <button style={s.tab(activeType==='word')} onClick={()=>setActiveType('word')}>
+              <button style={S.tab(activeType === 'word')} onClick={() => setActiveType('word')}>
                 단어 {results.words.length}건
               </button>
             )}
             {results.domains.length > 0 && (
-              <button style={s.tab(activeType==='domain')} onClick={()=>setActiveType('domain')}>
+              <button style={S.tab(activeType === 'domain')} onClick={() => setActiveType('domain')}>
                 도메인 {results.domains.length}건
               </button>
             )}
-            {results.dict?.length > 0 && (
-              <button style={s.tab(activeType==='dict')} onClick={()=>setActiveType('dict')}>
-                표준국어대사전 {results.dict.length}건{results.dict.length===200?'+':''}
+            {results.dict && results.dict.length > 0 && (
+              <button style={S.tab(activeType === 'dict')} onClick={() => setActiveType('dict')}>
+                표준국어대사전 {results.dict.length}건{results.dict.length === 200 ? '+' : ''}
               </button>
             )}
           </div>
         )}
 
         {/* 결과 영역 */}
-        <div style={{flex:1,overflowY:'auto',display:'flex',minHeight:0}}>
-          <div style={{flex:1,overflowY:'auto'}}>
+        <div style={{ flex:1, overflowY:'auto', display:'flex', minHeight:0 }}>
+          <div style={{ flex:1, overflowY:'auto' }}>
             {!results && !loading && (
-              <p style={{padding:24,textAlign:'center',color:'hsl(var(--muted-foreground))',fontSize:13}}>검색어를 입력하면 용어·단어·도메인을 통합 검색합니다</p>
+              <p style={{ padding:24, textAlign:'center', color:'hsl(var(--muted-foreground))', fontSize:13 }}>
+                검색어를 입력하면 용어, 단어, 도메인을 통합 검색합니다
+              </p>
             )}
             {results && filtered.length === 0 && (
-              <p style={{padding:24,textAlign:'center',color:'hsl(var(--muted-foreground))',fontSize:13}}>검색 결과 없음</p>
+              <p style={{ padding:24, textAlign:'center', color:'hsl(var(--muted-foreground))', fontSize:13 }}>검색 결과 없음</p>
             )}
             {filtered.length > 0 && (
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={s.th}>구분</th>
-                    <th style={s.th}>이름</th>
-                    <th style={s.th}>약어/타입</th>
-                    <th style={s.th}>도메인/길이</th>
-                    <th style={s.th}>설명</th>
+                    <th style={S.th}>구분</th>
+                    <th style={S.th}>이름</th>
+                    <th style={S.th}>약어/타입</th>
+                    <th style={S.th}>도메인/길이</th>
+                    <th style={S.th}>설명</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((row, i) => (
                     <tr key={i}
-                      style={{cursor:'pointer',background:selected===i?'hsl(var(--primary)/0.06)':'transparent',transition:'background .1s'}}
-                      onClick={()=>setSelected(i===selected?null:i)}
-                      onMouseEnter={e=>{ if(selected!==i) e.currentTarget.style.background='hsl(var(--muted))'; }}
-                      onMouseLeave={e=>{ if(selected!==i) e.currentTarget.style.background='transparent'; }}>
-                      <td style={s.td}>
-                        <span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:700,background:(TYPE_COLOR[row._type]||'#6b7280')+'18',color:TYPE_COLOR[row._type]||'#6b7280'}}>
+                      style={{ cursor:'pointer', background: selected === i ? 'hsl(var(--primary)/0.06)' : 'transparent', transition:'background .1s' }}
+                      onClick={() => setSelected(i === selected ? null : i)}
+                      onMouseEnter={e => { if (selected !== i) e.currentTarget.style.background = 'hsl(var(--muted))'; }}
+                      onMouseLeave={e => { if (selected !== i) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <td style={S.td}>
+                        <span style={{ padding:'2px 8px', borderRadius:99, fontSize:10, fontWeight:700, background:(TYPE_COLOR[row._type] || '#6b7280') + '18', color: TYPE_COLOR[row._type] || '#6b7280' }}>
                           {TYPE_LABEL[row._type]}
                         </span>
                       </td>
-                      <td style={{...s.td,fontWeight:600}} title={row.name||''}>{row.name||'-'}</td>
-                      <td style={s.td} title={row.abbr||''}>{row.abbr||'-'}</td>
-                      <td style={s.td} title={row.domain||''}>{row.domain||'-'}</td>
-                      <td style={s.td} title={row.desc||''}>{row.desc||'-'}</td>
+                      <td style={{ ...S.td, fontWeight:600 }} title={row.name || ''}>
+                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                          <span>{row.name || '-'}</span>
+                          {row._type !== 'dict' && (
+                            <button
+                              onClick={e => { e.stopPropagation(); addBookmark(row); }}
+                              style={{ border:'none', background:'none', cursor:'pointer', color:'hsl(var(--muted-foreground))', padding:0, flexShrink:0 }}
+                              title="즐겨찾기 추가"
+                            >
+                              <BookmarkIcon size={11}/>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td style={S.td} title={row.abbr || ''}>{row.abbr || '-'}</td>
+                      <td style={S.td} title={row.domain || ''}>{row.domain || '-'}</td>
+                      <td style={S.td} title={row.desc || ''}>{row.desc || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -165,26 +264,28 @@ export default function QuickSearchModal({ onClose }) {
 
           {/* 선택 상세 */}
           {selected !== null && filtered[selected] && (
-            <div style={{width:260,borderLeft:'1px solid hsl(var(--border))',padding:16,flexShrink:0,overflowY:'auto',background:'hsl(var(--muted)/0.3)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-                <span style={{padding:'2px 8px',borderRadius:99,fontSize:11,fontWeight:700,background:(TYPE_COLOR[filtered[selected]._type])+'18',color:TYPE_COLOR[filtered[selected]._type]}}>
+            <div style={{ width:260, borderLeft:'1px solid hsl(var(--border))', padding:16, flexShrink:0, overflowY:'auto', background:'hsl(var(--muted))' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+                <span style={{ padding:'2px 8px', borderRadius:99, fontSize:11, fontWeight:700, background:(TYPE_COLOR[filtered[selected]._type] || '#6b7280') + '18', color: TYPE_COLOR[filtered[selected]._type] || '#6b7280' }}>
                   {TYPE_LABEL[filtered[selected]._type]}
                 </span>
-                <span style={{fontSize:14,fontWeight:700}}>{filtered[selected].name}</span>
+                <span style={{ fontSize:14, fontWeight:700 }}>{filtered[selected].name}</span>
               </div>
-              {Object.entries(filtered[selected]).filter(([k])=>k!=='_type'&&k!=='type'&&k!=='id').map(([k,v])=>(
-                <div key={k} style={{marginBottom:12}}>
-                  <p style={{fontSize:10,fontWeight:700,color:'hsl(var(--muted-foreground))',marginBottom:3,textTransform:'uppercase',letterSpacing:.4}}>{COL_LABEL[k]||k}</p>
-                  <p style={{fontSize:12,wordBreak:'break-all',lineHeight:1.5}}>{v===null||v===''?<span style={{color:'hsl(var(--muted-foreground))'}}>-</span>:String(v)}</p>
+              {Object.entries(filtered[selected]).filter(([k]) => k !== '_type' && k !== 'type' && k !== 'id').map(([k, v]) => (
+                <div key={k} style={{ marginBottom:12 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:'hsl(var(--muted-foreground))', marginBottom:3, textTransform:'uppercase', letterSpacing:.4 }}>{COL_LABEL[k] || k}</p>
+                  <p style={{ fontSize:12, wordBreak:'break-all', lineHeight:1.5 }}>
+                    {v === null || v === '' ? <span style={{ color:'hsl(var(--muted-foreground))' }}>-</span> : String(v)}
+                  </p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div style={{padding:'8px 16px',borderTop:'1px solid hsl(var(--border))',fontSize:11,color:'hsl(var(--muted-foreground))',display:'flex',justifyContent:'space-between',flexShrink:0}}>
-          <span>{filtered.length > 0 ? `${filtered.length}건 표시` : ''}</span>
-          <span>ESC 닫기 · 행 클릭 상세</span>
+        <div style={{ padding:'8px 16px', borderTop:'1px solid hsl(var(--border))', fontSize:11, color:'hsl(var(--muted-foreground))', display:'flex', justifyContent:'space-between', flexShrink:0 }}>
+          <span>{filtered.length > 0 ? filtered.length + '건 표시' : ''}</span>
+          <span>ESC 닫기 / 행 클릭 상세</span>
         </div>
       </div>
     </div>
