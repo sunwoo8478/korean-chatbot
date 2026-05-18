@@ -150,6 +150,28 @@ function SmallBtn({ label, color, onClick }) {
   );
 }
 
+function RegenBtn({ onClick }) {
+  return (
+    <button onClick={onClick} title="답변 재생성" style={{
+      display:'flex', alignItems:'center', gap:4, padding:'4px 8px',
+      borderRadius:6, border:'1px solid hsl(var(--border))',
+      background:'hsl(var(--background))', color:'hsl(var(--muted-foreground))',
+      fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+    }}
+      onMouseEnter={e=>{e.currentTarget.style.background='hsl(var(--muted))';e.currentTarget.style.color='hsl(var(--foreground))';}}
+      onMouseLeave={e=>{e.currentTarget.style.background='hsl(var(--background))';e.currentTarget.style.color='hsl(var(--muted-foreground))';}}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+      재생성
+    </button>
+  );
+}
+
+const _COLUMN_PATTERN = /컬럼명|영문약어|데이터.?타입|PAY_AMT|RRNO|NUMERIC|CHAR\(|VARCHAR/i;
+function _hasColumnInfo(content) {
+  return _COLUMN_PATTERN.test(content);
+}
+
 function QualityBadge({ q }) {
   const cfg = q.grade === 'high'
     ? { color:'#16a34a', label:`DB 근거 ${q.std_count}건` }
@@ -163,7 +185,7 @@ function QualityBadge({ q }) {
   );
 }
 
-export default function Message({ msg, onOpenSource, compareType, convId, onDelete, onEdit, onFeedback }) {
+export default function Message({ msg, onOpenSource, compareType, convId, onDelete, onEdit, onFeedback, onRegenerate, onExtractColumns }) {
   const bubbleRef = useRef(null);
   const [open, setOpen] = useState(false);
 
@@ -171,19 +193,12 @@ export default function Message({ msg, onOpenSource, compareType, convId, onDele
   const isClaude = msg.isClaude;
   const isQ27    = compareType === 'qwen27' && isClaude;
 
+  // 스트리밍 완료 후 인용 링크 추가
   useEffect(() => {
     if (isUser || !bubbleRef.current || msg.streaming) return;
-    try { bubbleRef.current.innerHTML = parseMarkdown(msg.content); }
-    catch(e) { bubbleRef.current.textContent = msg.content; }
     renderMermaidInEl(bubbleRef.current);
     if (msg.sources?.length) addInlineCitations(bubbleRef.current, msg.sources, onOpenSource);
-  }, [msg.streaming, msg.content, msg.sources]);
-
-  useEffect(() => {
-    if (!msg.streaming || isUser || !bubbleRef.current) return;
-    try { bubbleRef.current.innerHTML = parseMarkdown(msg.content) + '<span class="stream-cursor"></span>'; }
-    catch(e) { bubbleRef.current.textContent = msg.content; }
-  }, [msg.content, msg.streaming]);
+  }, [msg.streaming, msg.sources]);
 
   /* 사용자 메시지 */
   if (isUser) return (
@@ -208,12 +223,30 @@ export default function Message({ msg, onOpenSource, compareType, convId, onDele
         {msg.status && !msg.content && (
           <p style={{ color:'hsl(var(--muted-foreground))', fontSize:'.8125rem' }}>{msg.status}</p>
         )}
-        <div className="aui-bot-bubble" ref={bubbleRef} />
+        <div
+          className="aui-bot-bubble"
+          ref={bubbleRef}
+          style={msg.streaming && !msg.content ? undefined : undefined}
+        >
+          {msg.streaming && !msg.content && (
+            <span style={{color:'hsl(var(--muted-foreground))',fontSize:13}}>응답 생성 중...</span>
+          )}
+          {msg.content && (
+            <span style={{whiteSpace:'pre-wrap'}}>{msg.content}{msg.streaming ? '▌' : ''}</span>
+          )}
+        </div>
         {!msg.streaming && msg.content && (
           <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
             <CopyBtn text={msg.content}/>
+            {onRegenerate && <RegenBtn onClick={onRegenerate}/>}
             <ExportMenu content={msg.content} title="챗봇 답변"/>
             {msg.quality && <QualityBadge q={msg.quality}/>}
+            {onExtractColumns && _hasColumnInfo(msg.content) && (
+              <button onClick={()=>onExtractColumns(msg.content)}
+                style={{padding:'4px 8px',borderRadius:6,border:'1px solid #2563eb30',background:'#2563eb10',color:'#2563eb',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+                설계서 추출
+              </button>
+            )}
             {onDelete && (
               <MoreActions msg={msg} onDelete={onDelete} onEdit={onEdit} onFeedback={onFeedback}/>
             )}
