@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Message from './Message';
 
-export default function ChatPanel({ label, chipClass, subLabel, messages, isTyping, compareType, onOpenSource, onDeleteMessage, onEditMessage, onFeedback, convId, onSend }) {
+export default function ChatPanel({ label, chipClass, subLabel, messages, isTyping, compareType, onOpenSource, onDeleteMessage, onEditMessage, onFeedback, convId, onSend, onRegenerate, onExtractColumns }) {
   const scrollRef = useRef(null);
   const [suggested, setSuggested] = useState([]);
 
@@ -43,7 +43,9 @@ export default function ChatPanel({ label, chipClass, subLabel, messages, isTypi
           {messages.map(msg => (
             <React.Fragment key={msg.id}>
               <Message msg={msg} compareType={compareType} onOpenSource={onOpenSource}
-                onDelete={onDeleteMessage} onEdit={onEditMessage} onFeedback={onFeedback} convId={convId}/>
+                onDelete={onDeleteMessage} onEdit={onEditMessage} onFeedback={onFeedback} convId={convId}
+                onRegenerate={msg.role==='bot'&&!msg.isClaude ? onRegenerate : null}
+                onExtractColumns={onExtractColumns}/>
               {msg.suggested && suggested.length > 0 && (
                 <div style={{ marginTop:16, display:'flex', flexWrap:'wrap', gap:8 }}>
                   {suggested.map((q,i) => (
