@@ -34,6 +34,7 @@ export default function Sidebar({
   onNewChat, onLoadConv, onDeleteConv,
   onSetQwenModel, onToggleQwen27, onToggleClaude, onToggleDark,
   onOpenSkills, onOpenDocs, onOpenStandards, onOpenAdmin, onRenameConv,
+  displayName, onLogout,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [width, setWidth] = useState(() => {
@@ -220,11 +221,11 @@ export default function Sidebar({
               style={{ width:'100%', background:'rgba(255,255,255,.06)', border:`1px solid ${S.border}`, borderRadius:8, color:S.text, fontSize:12.5, padding:'6px 10px', cursor:'pointer', outline:'none', fontFamily:'inherit', marginBottom:8 }}
             >
               <option value="35b">Qwen 35B (MoE)</option>
-              <option value="27b">Nemotron-3 Nano 30B</option>
+              <option value="27b">Mixtral 8x7B</option>
             </select>
 
             <p style={{ fontSize:10.5, color:S.sub, padding:'2px 4px 6px', fontWeight:600, letterSpacing:.4, textTransform:'uppercase' }}>비교 모드</p>
-            <SidebarBtn active={qwen27Active} onClick={onToggleQwen27} s={S}>Qwen 27B 비교</SidebarBtn>
+            <SidebarBtn active={qwen27Active} onClick={onToggleQwen27} s={S}>Mixtral 8x7B 비교</SidebarBtn>
             <SidebarBtn active={claudeActive} onClick={onToggleClaude} s={S}>
               {claudeActive ? 'Claude 연결됨' : 'Claude 비교 연결'}
             </SidebarBtn>
@@ -238,6 +239,20 @@ export default function Sidebar({
 
             <div style={{ height:1, background:S.border, margin:'10px 4px' }}/>
             <SidebarBtn active={false} onClick={onOpenAdmin} s={S}>관리자 패널</SidebarBtn>
+
+            <div style={{ height:1, background:S.border, margin:'10px 4px' }}/>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 12px' }}>
+              <div style={{ minWidth:0 }}>
+                <p style={{ fontSize:12, fontWeight:600, color:S.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName || '사용자'}</p>
+                <p style={{ fontSize:10, color:S.sub, marginTop:1 }}>로그인됨</p>
+              </div>
+              <button onClick={onLogout}
+                style={{ fontSize:11, color:S.sub, border:`1px solid ${S.border}`, borderRadius:6, padding:'3px 8px', background:'none', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}
+                onMouseEnter={e=>e.currentTarget.style.color=S.red}
+                onMouseLeave={e=>e.currentTarget.style.color=S.sub}>
+                로그아웃
+              </button>
+            </div>
           </div>
         </>}
       </aside>
