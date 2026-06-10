@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+httpx
+psycopg2-binary
+pydantic-settings
+requests
