@@ -1,0 +1,266 @@
+import { useState, useEffect, useCallback } from 'react';
+import Sidebar from './components/Sidebar';
+import ChatArea from './components/ChatArea';
+import SourcePanel from './components/SourcePanel';
+import ApiKeyModal from './components/ApiKeyModal';
+import { useConversations } from './hooks/useConversations';
+import { useStream } from './hooks/useStream';
+
+const WELCOME_MSG = {
+  id: 'welcome',
+  role: 'bot',
+  content: '안녕하세요. 표준국어대사전과 공공데이터 공통표준을 기반으로 답변드립니다.\n\n**예시** — 납부금액 영문약어 / 주민등록번호 데이터 타입 / 사랑 뜻풀이',
+  sources: [],
+  streaming: false,
+  isClaude: false,
+};
+
+let msgIdCounter = 1;
+function nextId() { return `msg-${msgIdCounter++}`; }
+
+export default function App() {
+  const [qwenModel, setQwenModel] = useState(() => localStorage.getItem('qwen_model') || '35b');
+  const [anthropicKey, setAnthropicKey] = useState(() => localStorage.getItem('anthropic_api_key') || '');
+  const [compareType, setCompareType] = useState('none'); // 'none' | 'qwen27' | 'claude'
+  const compareMode = compareType !== 'none';
+
+  const [leftMessages, setLeftMessages] = useState([WELCOME_MSG]);
+  const [rightMessages, setRightMessages] = useState([]);
+  const [leftTyping, setLeftTyping] = useState(false);
+  const [rightTyping, setRightTyping] = useState(false);
+
+  const [activeSource, setActiveSource] = useState(null);
+  const [showApiModal, setShowApiModal] = useState(false);
+
+  const {
+    conversations, currentConvId, setCurrentConvId,
+    loadList, loadConversation, deleteConversation,
+    saveMessage, createConversation,
+  } = useConversations();
+
+  const { stream } = useStream();
+
+  // Load conversation list on mount
+  useEffect(() => { loadList(); }, []);
+
+  function handleSetQwenModel(v) {
+    setQwenModel(v);
+    localStorage.setItem('qwen_model', v);
+  }
+
+  function handleToggleQwen27() {
+    if (compareType === 'qwen27') {
+      setCompareType('none');
+    } else {
+      setCompareType('qwen27');
+      setRightMessages([{
+        id: nextId(), role: 'bot', isClaude: false,
+        content: '비교 모드가 활성화됐습니다. 질문을 입력하면 두 모델의 답변을 동시에 비교합니다.',
+        sources: [], streaming: false,
+      }]);
+    }
+  }
+
+  function handleToggleClaude() {
+    if (compareType === 'claude') {
+      setCompareType('none');
+    } else if (anthropicKey) {
+      setCompareType('claude');
+      setRightMessages([{
+        id: nextId(), role: 'bot', isClaude: true,
+        content: '비교 모드가 활성화됐습니다. 질문을 입력하면 두 모델의 답변을 동시에 비교합니다.',
+        sources: [], streaming: false,
+      }]);
+    } else {
+      setShowApiModal(true);
+    }
+  }
+
+  function handleConnectApiKey(key) {
+    setAnthropicKey(key);
+    localStorage.setItem('anthropic_api_key', key);
+    setCompareType('claude');
+    setRightMessages([{
+      id: nextId(), role: 'bot', isClaude: true,
+      content: '비교 모드가 활성화됐습니다. 질문을 입력하면 두 모델의 답변을 동시에 비교합니다.',
+      sources: [], streaming: false,
+    }]);
+  }
+
+  function handleNewChat() {
+    setCurrentConvId(null);
+    setLeftMessages([WELCOME_MSG]);
+    setRightMessages([]);
+  }
+
+  async function handleLoadConv(id) {
+    const conv = await loadConversation(id);
+    if (!conv) return;
+    setCurrentConvId(id);
+
+    const left = [];
+    const right = [];
+    for (const msg of conv.messages) {
+      const isClaude = msg.model === 'claude';
+      const sources = msg.sources
+        ? (typeof msg.sources === 'string' ? JSON.parse(msg.sources) : msg.sources)
+        : [];
+      const item = {
+        id: nextId(),
+        role: msg.role === 'assistant' ? 'bot' : msg.role,
+        content: msg.content,
+        sources,
+        streaming: false,
+        isClaude,
+      };
+      if (isClaude) right.push(item);
+      else left.push(item);
+    }
+
+    setLeftMessages(left.length ? left : [WELCOME_MSG]);
+    setRightMessages(right);
+  }
+
+  async function handleDeleteConv(id) {
+    if (!confirm('이 대화를 삭제할까요?')) return;
+    await deleteConversation(id);
+    if (currentConvId === id) handleNewChat();
+    loadList();
+  }
+
+  // Ensure conversation exists, return convId
+  const ensureConv = useCallback(async (text) => {
+    if (currentConvId) return currentConvId;
+    const conv = await createConversation(text, qwenModel);
+    setCurrentConvId(conv.id);
+    setTimeout(() => loadList(), 300);
+    return conv.id;
+  }, [currentConvId, qwenModel]);
+
+  async function handleSend(text, target) {
+    const toLeft = !compareMode || target !== 'right';
+    const toRight = compareMode && target !== 'left';
+
+    // Add user messages
+    const userMsg = { id: nextId(), role: 'user', content: text, sources: [], streaming: false, isClaude: false };
+    if (toLeft) setLeftMessages(m => [...m, { ...userMsg, id: nextId() }]);
+    if (toRight) setRightMessages(m => [...m, { ...userMsg, id: nextId(), isClaude: compareType === 'claude' }]);
+
+    // Save user message
+    const convId = await ensureConv(text);
+    await saveMessage(convId, 'user', text, qwenModel, []);
+
+    // Determine models to call
+    const tasks = [];
+
+    if (toLeft) {
+      const leftModel = compareType === 'qwen27' ? '35b' : qwenModel;
+      tasks.push(streamPanel({
+        side: 'left', text, model: 'qwen', qwenModelOverride: leftModel, convId,
+        isClaude: false,
+      }));
+    }
+
+    if (toRight) {
+      if (compareType === 'qwen27') {
+        tasks.push(streamPanel({ side: 'right', text, model: 'qwen', qwenModelOverride: '27b', convId, isClaude: false }));
+      } else {
+        tasks.push(streamPanel({ side: 'right', text, model: 'claude', qwenModelOverride: qwenModel, convId, isClaude: true }));
+      }
+    }
+
+    await Promise.all(tasks);
+    setTimeout(() => loadList(), 800);
+  }
+
+  async function streamPanel({ side, text, model, qwenModelOverride, convId, isClaude }) {
+    const setTyping = side === 'left' ? setLeftTyping : setRightTyping;
+    const setMsgs = side === 'left' ? setLeftMessages : setRightMessages;
+
+    // Placeholder 메시지 추가 (typing 인디케이터 대신 사용)
+    setTyping(false);  // typing dot 비활성화 — placeholder가 대신함
+    const msgId = nextId();
+    const placeholder = {
+      id: msgId, role: 'bot', content: '',
+      status: '검색 중...',
+      sources: [], streaming: true, isClaude,
+    };
+    setMsgs(m => [...m, placeholder]);
+
+    let sources = [];
+
+    await stream({
+      message: text,
+      model,
+      apiKey: model === 'claude' ? anthropicKey : '',
+      qwenModel: qwenModelOverride,
+      convId,
+      onSources: (s) => {
+        sources = s;
+        setMsgs(m => m.map(msg =>
+          msg.id === msgId ? { ...msg, sources: s, status: '생성 중...' } : msg
+        ));
+      },
+      onToken: (fullText) => {
+        setMsgs(m => m.map(msg =>
+          msg.id === msgId ? { ...msg, content: fullText, status: null, streaming: true } : msg
+        ));
+      },
+      onDone: async (fullText) => {
+        setMsgs(m => m.map(msg =>
+          msg.id === msgId ? { ...msg, content: fullText, status: null, streaming: false } : msg
+        ));
+        setTyping(false);
+        // Save assistant message
+        const saveModel = model === 'claude' ? 'claude' : qwenModelOverride;
+        await saveMessage(convId, 'assistant', fullText, saveModel, sources);
+      },
+      onError: (err) => {
+        setMsgs(m => m.map(msg =>
+          msg.id === msgId ? { ...msg, content: `오류: ${err}`, status: null, streaming: false } : msg
+        ));
+        setTyping(false);
+      },
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
+      <Sidebar
+        conversations={conversations}
+        currentConvId={currentConvId}
+        qwenModel={qwenModel}
+        compareType={compareType}
+        onNewChat={handleNewChat}
+        onLoadConv={handleLoadConv}
+        onDeleteConv={handleDeleteConv}
+        onSetQwenModel={handleSetQwenModel}
+        onToggleQwen27={handleToggleQwen27}
+        onToggleClaude={handleToggleClaude}
+      />
+
+      <ChatArea
+        compareMode={compareMode}
+        compareType={compareType}
+        qwenModel={qwenModel}
+        leftMessages={leftMessages}
+        rightMessages={rightMessages}
+        leftTyping={leftTyping}
+        rightTyping={rightTyping}
+        onSend={handleSend}
+        onOpenSource={setActiveSource}
+      />
+
+      {activeSource && (
+        <SourcePanel source={activeSource} onClose={() => setActiveSource(null)} />
+      )}
+
+      {showApiModal && (
+        <ApiKeyModal
+          onConnect={handleConnectApiKey}
+          onClose={() => setShowApiModal(false)}
+        />
+      )}
+    </div>
+  );
+}

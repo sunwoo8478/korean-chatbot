@@ -1,0 +1,33 @@
+module.exports = {
+  apps: [
+    {
+      name: 'ntsys-backend',
+      cwd: '/Users/sw/Developer/korean-chatbot',
+      script: '/Users/sw/Library/Python/3.9/bin/uvicorn',
+      args: 'app.main:app --host 0.0.0.0 --port 9000',
+      interpreter: 'none',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 3000,
+      env: { PYTHONPATH: '/Users/sw/Developer/korean-chatbot' },
+      log_file: '/tmp/ntsys-backend.log',
+      error_file: '/tmp/ntsys-backend-err.log',
+      out_file: '/tmp/ntsys-backend-out.log',
+    },
+    {
+      name: 'ntsys-frontend',
+      cwd: '/Users/sw/Developer/korean-chatbot/frontend',
+      script: 'npm',
+      args: 'run dev',
+      interpreter: 'none',
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      restart_delay: 3000,
+      log_file: '/tmp/ntsys-frontend.log',
+      error_file: '/tmp/ntsys-frontend-err.log',
+      out_file: '/tmp/ntsys-frontend-out.log',
+    },
+  ],
+};
