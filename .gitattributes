@@ -1,0 +1,2 @@
+app/static/react/** linguist-generated=true
+frontend/src/assets/*.svg linguist-vendored=true
