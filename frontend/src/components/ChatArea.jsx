@@ -11,10 +11,10 @@ export default function ChatArea({
 }) {
   const leftChip  = qwenModel === '27b' ? 'chip-d' : 'chip-q';
   const leftLabel = qwenModel === '27b' ? 'Mixtral 8x7B' : 'Qwen 35B';
-  const leftSub   = qwenModel === '27b' ? 'GX10-1 vLLM' : 'GX10-2 MoE';
+  const leftSub   = qwenModel === '27b' ? '노드1 vLLM' : '노드2 MoE';
 
   let rightChip = 'chip-c', rightLabel = 'Claude Sonnet 4.6', rightSub = 'Anthropic API';
-  if (compareType === 'qwen27') { rightChip = 'chip-d'; rightLabel = 'Mixtral 8x7B'; rightSub = 'GX10-1 vLLM'; }
+  if (compareType === 'qwen27') { rightChip = 'chip-d'; rightLabel = 'Mixtral 8x7B'; rightSub = '노드1 vLLM'; }
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, background:'hsl(var(--muted))' }}>

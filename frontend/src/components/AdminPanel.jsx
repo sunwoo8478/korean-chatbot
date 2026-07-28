@@ -80,7 +80,7 @@ export default function AdminPanel({ onClose }) {
         <div style={S.head}>
           <div>
             <h2 style={{fontSize:16,fontWeight:700}}>관리자 패널</h2>
-            <p style={{fontSize:12,color:'hsl(var(--muted-foreground))',marginTop:1}}>NT Sys 챗봇 통합 관리</p>
+            <p style={{fontSize:12,color:'hsl(var(--muted-foreground))',marginTop:1}}>Korean Knowledge Assistant 통합 관리</p>
           </div>
           <button onClick={onClose} style={S.btn('hsl(var(--muted))','hsl(var(--foreground))')}>
             <XIcon size={15}/>

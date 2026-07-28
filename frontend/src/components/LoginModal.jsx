@@ -59,7 +59,7 @@ export default function LoginModal({ onLogin }) {
         {/* 로고 */}
         <div style={{ textAlign:'center', marginBottom:28 }}>
           <div style={{ width:52, height:52, borderRadius:14, background:'linear-gradient(135deg,hsl(221 83% 53%),hsl(199 89% 60%))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:800, color:'#fff', margin:'0 auto 14px' }}>NT</div>
-          <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>NT Sys 챗봇</h2>
+          <h2 style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Korean Knowledge Assistant</h2>
           <p style={{ fontSize:12, color:'hsl(var(--muted-foreground))' }}>공공데이터 공통표준 AI 어시스턴트</p>
         </div>
 

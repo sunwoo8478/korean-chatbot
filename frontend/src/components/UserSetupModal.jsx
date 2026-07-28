@@ -7,7 +7,7 @@ export default function UserSetupModal({ onConfirm }) {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:'hsl(var(--background))', borderRadius:16, width:380, padding:'32px 28px', boxShadow:'0 20px 60px rgba(0,0,0,.25)', textAlign:'center' }}>
         <div style={{ width:48, height:48, borderRadius:12, background:'linear-gradient(135deg,hsl(221 83% 53%),hsl(199 89% 60%))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:800, color:'#fff', margin:'0 auto 16px' }}>NT</div>
-        <h2 style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>NT Sys 챗봇</h2>
+        <h2 style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>Korean Knowledge Assistant</h2>
         <p style={{ fontSize:13, color:'hsl(var(--muted-foreground))', marginBottom:24 }}>이름을 입력하면 대화 기록이 개인별로 저장됩니다</p>
         <input
           autoFocus

@@ -26,7 +26,7 @@ export default function ShareView({ shareId }) {
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
           <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,hsl(221 83% 53%),hsl(199 89% 60%))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>NT</div>
           <div>
-            <p style={{ fontSize:13, fontWeight:700 }}>NT Sys 챗봇 공유 답변</p>
+            <p style={{ fontSize:13, fontWeight:700 }}>Korean Knowledge Assistant 공유 답변</p>
             {data && <p style={{ fontSize:11, color:'hsl(var(--muted-foreground))', marginTop:1 }}>
               {new Date(data.created_at).toLocaleString('ko-KR')} 공유됨 · {new Date(data.expires_at).toLocaleDateString('ko-KR')} 만료
             </p>}
