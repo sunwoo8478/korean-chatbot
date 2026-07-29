@@ -206,7 +206,7 @@ async def execute_skill(skill_id: str, arguments: dict) -> str:
             return f"API 호출 오류: {str(e)}"
 
     elif skill["skill_type"] == "code":
-        return execute_code_skill(str(skill["id"]), arguments)
+        return await execute_code_skill(str(skill["id"]), arguments)
 
     return "지원하지 않는 스킬 타입입니다."
 
