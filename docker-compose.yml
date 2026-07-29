@@ -15,8 +15,8 @@ services:
       DB_USER: ${DB_USER:-dictuser}
       DB_PASSWORD: ${DB_PASSWORD}
       VLLM_URL: ${VLLM_URL:-http://host.docker.internal:11434/v1}
-      VLLM_MODEL: ${VLLM_MODEL:-qwen3:14b}
-      VLLM_MODEL_DENSE: ${VLLM_MODEL_DENSE:-gemma3:12b}
+      VLLM_MODEL: ${VLLM_MODEL:-gemma3:12b}
+      VLLM_MODEL_DENSE: ${VLLM_MODEL_DENSE:-exaone3.5:7.8b}
       VLLM_URL_DENSE: ${VLLM_URL_DENSE:-http://host.docker.internal:11434/v1}
       VLLM_MAX_TOKENS: ${VLLM_MAX_TOKENS:-2048}
       VLLM_TEMPERATURE: ${VLLM_TEMPERATURE:-0.1}
