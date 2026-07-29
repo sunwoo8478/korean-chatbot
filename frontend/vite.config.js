@@ -11,8 +11,9 @@ export default defineConfig({
       '/api': { target: 'http://localhost:9000', changeOrigin: true },
     },
   },
+  base: '/static/',
   build: {
-    outDir: '../app/static/react',
+    outDir: '../app/static',
     emptyOutDir: true,
   },
 })

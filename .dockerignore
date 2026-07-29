@@ -1,0 +1,45 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+**/__pycache__/
+**/*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# App runtime/generated (built fresh by the Dockerfile, never from stale local state)
+app/static/
+app/dynamic_tools/*.py
+
+# Docs / misc (not needed at runtime, keeps build context small)
+docs/
+assets/
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+README.md
+.github/
+
+# Editor/OS
+.DS_Store
+*.log
+
+# Docker meta
+Dockerfile
+docker-compose.yml
+.dockerignore

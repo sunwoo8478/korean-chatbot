@@ -136,7 +136,23 @@ EMBED_MODEL=bge-m3
 RERANKER_URL=http://localhost:8100
 ```
 
-### 백엔드
+### Docker로 실행 (권장)
+
+백엔드 + 빌드된 프런트엔드를 하나의 이미지로 묶어 실행합니다. PostgreSQL/pgvector와 임베딩·LLM 엔드포인트는 컨테이너 밖(호스트)에 이미 떠 있다고 가정하고 `host.docker.internal`로 접속합니다 — 이 compose 파일이 DB를 새로 만들거나 관리하지 않습니다.
+
+컨테이너 안에서는 `localhost`가 컨테이너 자신을 가리키므로, 호스트의 DB/Ollama에 붙으려면 `host.docker.internal`을 쓰는 별도의 `.env.docker`가 필요합니다 (호스트에서 직접 실행할 때 쓰는 `.env`와는 다른 파일).
+
+```bash
+cp .env.docker.example .env.docker   # DB_PASSWORD 등 실제 값으로 채우기
+docker compose --env-file .env.docker up -d --build
+curl http://localhost:9000/health
+```
+
+### 수동 실행 (개발용)
+
+핫리로드가 필요한 로컬 개발 시에는 아래처럼 백엔드/프런트엔드를 각각 띄웁니다.
+
+**백엔드**
 
 ```bash
 python -m venv .venv
@@ -145,7 +161,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 9000
 ```
 
-### 프런트엔드
+**프런트엔드**
 
 ```bash
 cd frontend

@@ -4,3 +4,9 @@ httpx
 psycopg2-binary
 pydantic-settings
 requests
+anthropic
+pdfplumber
+python-docx
+openpyxl
+reportlab
+python-multipart
