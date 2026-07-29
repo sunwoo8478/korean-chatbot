@@ -146,6 +146,29 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             """, (qt, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
+            # 7-1b. 표준국어대사전 — 용언 활용형 매칭
+            # 부분문자열 방식은 질의에 사전 표제어(기본형)가 그대로 들어있을 때만 잡힘.
+            # 용언은 활용하면서 어간 자체가 바뀌기도 해서("듣다" → "들어") 표제어 문자열이
+            # 질의에 아예 등장하지 않는 경우가 흔함 — dict_conjugations(활용형 사전 데이터)에서
+            # 미리 생성된 실제 활용형과 직접 매칭한다.
+            cur.execute("""
+                WITH candidates AS (
+                    SELECT DISTINCT substring(%s, i, len) AS cand
+                    FROM generate_series(1, %s) i, generate_series(2, 6) len
+                    WHERE i + len - 1 <= %s
+                )
+                SELECT DISTINCT ON (e.word)
+                    '사전' AS source, e.word AS title, s.pos,
+                    s.definition AS content, 0.92 AS score
+                FROM dict_conjugations dc
+                JOIN candidates c ON dc.conjugation = c.cand
+                JOIN dict_entries e ON e.id = dc.entry_id
+                JOIN dict_senses s ON s.entry_id = e.id
+                ORDER BY e.word, s.id
+                LIMIT 10
+            """, (qt, qlen, qlen))
+            exact_results.extend(cur.fetchall())
+
             # 7-2. 공통표준용어 — 복합어(7~8자) 포함
             cur.execute("""
                 WITH candidates AS (
