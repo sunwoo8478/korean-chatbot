@@ -24,7 +24,7 @@ export default function ShareView({ shareId }) {
     <div style={{ minHeight:'100vh', background:'hsl(var(--background))', display:'flex', flexDirection:'column', alignItems:'center', padding:'40px 16px' }}>
       <div style={{ width:'100%', maxWidth:720 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24 }}>
-          <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,hsl(221 83% 53%),hsl(199 89% 60%))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>NT</div>
+          <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,hsl(221 83% 53%),hsl(199 89% 60%))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>KK</div>
           <div>
             <p style={{ fontSize:13, fontWeight:700 }}>Korean Knowledge Assistant 공유 답변</p>
             {data && <p style={{ fontSize:11, color:'hsl(var(--muted-foreground))', marginTop:1 }}>
