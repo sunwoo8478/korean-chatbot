@@ -232,7 +232,9 @@ export default function Message({ msg, onOpenSource, compareType, convId, onDele
             <span style={{color:'hsl(var(--muted-foreground))',fontSize:13}}>응답 생성 중...</span>
           )}
           {msg.content && (
-            <span style={{whiteSpace:'pre-wrap'}}>{msg.content}{msg.streaming ? '▌' : ''}</span>
+            msg.streaming
+              ? <span style={{whiteSpace:'pre-wrap'}}>{msg.content}▌</span>
+              : <span dangerouslySetInnerHTML={{__html: parseMarkdown(msg.content)}} />
           )}
         </div>
         {!msg.streaming && msg.content && (
