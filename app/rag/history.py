@@ -63,7 +63,12 @@ def format_history_context(history: list[dict]) -> str:
     if not history:
         return ""
 
-    lines = ["## 관련 과거 대화 (다른 세션 포함 — 참고용)"]
+    lines = [
+        "## 관련 과거 대화 (다른 세션 포함 — 참고용, 검증되지 않음)",
+        "아래 과거 답변은 과거에 실제로 생성된 답변일 뿐 정답이 아닐 수 있습니다. "
+        "밑에 '■'로 시작하는 실제 DB 검색 결과와 내용이 다르면 반드시 그 검색 결과를 "
+        "우선하고, 과거 답변의 틀린 부분을 그대로 반복하지 마세요.",
+    ]
     for i, h in enumerate(history, 1):
         sim_pct = int(h["similarity"] * 100)
         answer  = h["answer"]

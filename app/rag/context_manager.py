@@ -71,13 +71,16 @@ _REWRITE_TRIGGERS = re.compile(
 def rewrite_query(query: str, history: list[dict]) -> str:
     """
     히스토리 맥락을 보고 현재 질문을 완전한 독립 질문으로 재작성.
-    - 지시어/생략어 포함 시 재작성
-    - 15자 이하 짧은 질문 + 히스토리 있으면 무조건 재작성 (맥락 의존 가능성 높음)
+    - 지시어/생략어(_REWRITE_TRIGGERS) 포함 시 재작성
+    - 6자 이하의 아주 짧은 질문(예: "왜?", "더 자세히")은 그 자체로 불완전한 파편일
+      가능성이 높아 무조건 재작성. 예전엔 15자 기준이라 "조사가 무슨 뜻이야?"처럼
+      이미 완결된 질문까지 직전 대화 맥락에 억지로 끼워 맞춰 완전히 다른 질문
+      ("조사 컬럼의 데이터 타입이 뭐야?")으로 둔갑시키는 버그가 있었음.
     """
     if not history:
         return query
 
-    is_short = len(query.strip()) <= 15
+    is_short = len(query.strip()) <= 6
     has_trigger = _REWRITE_TRIGGERS.search(query)
 
     if not is_short and not has_trigger:

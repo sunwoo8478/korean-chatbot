@@ -323,15 +323,14 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     # 과거 대화가 있으면 컨텍스트 앞에 추가
     full_context = f"{history_ctx}\n\n{context}" if history_ctx else context
 
-    # 쿼리 자체에 공통표준/DB 관련 키워드가 있을 때만 RAG 컨텍스트 포함
-    import re as _re
-    _std_keywords = _re.compile(
-        r"(컬럼|영문약어|도메인|데이터.?타입|저장형식|표현형식|공통표준|"
-        r"설계|테이블|sql|길이|약어|뜻|정의|코드|DB|NUMERIC|CHAR|VARCHAR|"
-        r"표준단어|표준용어|공공데이터|데이터베이스|스키마)",
-        _re.IGNORECASE
-    )
-    use_rag_context = bool(_std_keywords.search(query)) and bool(full_context.strip())
+    # 검색된 컨텍스트가 있으면 항상 프롬프트에 포함한다.
+    # 예전엔 질의에 "컬럼/데이터타입/길이" 같은 키워드가 있을 때만 컨텍스트를 넣었는데,
+    # "우편번호는 몇 자리로 저장돼?"처럼 자연스럽지만 키워드가 없는 질문은 검색은
+    # 해놓고 결과를 프롬프트에서 빼버려서, 모델이 실제 DB 값 대신 그럴듯하게 지어낸
+    # 값으로 답하는 할루시네이션이 발생했다(UI엔 "DB 근거 N건"이 떠서 더 혼란스러움).
+    # 관련 없는 질문 처리는 SYSTEM_PROMPT의 "질문 유형별 처리 방식" 지침이 이미 맡고 있으므로
+    # 여기서 별도로 필터링할 필요가 없다.
+    use_rag_context = bool(full_context.strip())
 
     if use_rag_context:
         user_message = f"아래 데이터를 종합적으로 분석하여 질문에 완결된 답변을 작성하세요.\n\n{full_context}\n\n질문: {query}"
