@@ -320,8 +320,36 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
 
     context = group_context(final_docs)
 
+    # 질문의 핵심 주어(컬럼/도메인/뜻풀이 대상 용어)를 뽑아서, 그 용어와 "정확히"
+    # 같은 제목의 문서를 찾았는지 확인한다. 처음엔 "제목이 질의의 부분문자열인가"로
+    # 체크했는데, exact match의 2~8자 무차별 부분문자열 생성 특성상 "번호"/"타입"/
+    # "데이터"/"컬럼" 같은 의미 없는 조각들도 전부 질의의 부분문자열이라 이 체크가
+    # 사실상 항상 참이 되어버렸다(디버깅으로 확인). "우주선일련번호"를 물어봐도
+    # "일련번호"(진짜 존재하는 다른 용어)가 부분일치해서 걸러지지 않았던 것.
+    # 그래서 부분일치가 아니라 추출된 핵심 주어와 제목의 "완전 일치"로 바꿨다.
+    import re as _re3
+    _subject_m = _re3.match(
+        r"^(.+?)(?:\s*(?:컬럼|의)?\s*(?:영문약어|데이터.?타입|도메인|길이|저장형식|표현형식)?"
+        r"\s*(?:이|가)?\s*(?:뭐야|무엇|알려줘|무슨 뜻|뜻이야|정의))",
+        query.strip()
+    )
+    # 위 패턴에 안 걸리는(예: "~써야 해?" 같은) 질문은 주어를 확신할 수 없으니
+    # 그냥 전체 질의를 주어로 오인해 오탐(진짜 답이 있는데도 경고를 띄우는 것)을
+    # 내는 대신, 이 체크 자체를 건너뛴다.
+    subject = _subject_m.group(1).strip() if _subject_m else None
+
+    no_exact_hit_warning = ""
+    if subject and final_docs and not any(d.get("title") == subject for d in final_docs):
+        no_exact_hit_warning = (
+            "\n\n[검색 결과 안내] 아래 문서 중 질문에 나온 용어와 문자 그대로 일치하는 "
+            "항목이 없습니다. 유사해 보이는 참고 자료일 뿐이니, 이름이 비슷하다거나 "
+            "도메인 네이밍 규칙(C1/V99 등)이 그럴듯하다는 이유로 데이터타입/길이를 "
+            "추론해서 답하지 마세요. 정확히 일치하는 항목이 없으면 "
+            "\"해당 항목은 공통표준에 정의되어 있지 않습니다\"라고 답하세요."
+        )
+
     # 과거 대화가 있으면 컨텍스트 앞에 추가
-    full_context = f"{history_ctx}\n\n{context}" if history_ctx else context
+    full_context = f"{history_ctx}\n\n{context}{no_exact_hit_warning}" if history_ctx else f"{context}{no_exact_hit_warning}"
 
     # 검색된 컨텍스트가 있으면 항상 프롬프트에 포함한다.
     # 예전엔 질의에 "컬럼/데이터타입/길이" 같은 키워드가 있을 때만 컨텍스트를 넣었는데,
