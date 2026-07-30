@@ -106,7 +106,7 @@ export default function Sidebar({
           {!collapsed && (
             <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
               <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,hsl(221 83% 53%) 0%,hsl(199 89% 60%) 100%)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff', flexShrink:0 }}>
-                NT
+                KK
               </div>
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:S.text, lineHeight:1.3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>한국어 표준</div>
@@ -116,7 +116,7 @@ export default function Sidebar({
           )}
           {collapsed && (
             <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg,hsl(221 83% 53%) 0%,hsl(199 89% 60%) 100%)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff', margin:'0 auto' }}>
-              NT
+              KK
             </div>
           )}
           {!collapsed && (
