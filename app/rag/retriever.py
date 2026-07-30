@@ -128,23 +128,56 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             params4 = (qt, qlen, qlen, qt)   # candidates CTE 4번 사용
 
             # 7-1. 표준국어대사전 — 명사 우선
+            # 예전엔 DISTINCT ON (e.word)로 동음이의어("조사"처럼 뜻이 32개인 단어)여도
+            # 그중 하나(entry id가 가장 작은 것)만 임의로 골라 보여줬음 — 사용자가 어떤
+            # 뜻을 물어본 건지 구분 안 하고 엉뚱한 하나로 단정짓는 문제가 있었다.
+            # 이제 표제어(entry)별 첫 뜻풀이를 최대 5개(동음이의어 5개)까지 가져오고,
+            # 파이썬에서 같은 단어끼리 묶어 번호를 매겨 하나의 컨텍스트로 합친다.
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
                     FROM generate_series(1, %s) i, generate_series(2, 6) len
                     WHERE i + len - 1 <= %s
+                ),
+                matched AS (
+                    SELECT DISTINCT ON (e.word, e.id)
+                        e.word, e.id AS entry_id, s.pos, s.definition
+                    FROM dict_entries e
+                    JOIN dict_senses s ON e.id = s.entry_id
+                    JOIN candidates c ON e.word = c.cand
+                    WHERE s.pos = '명사'
+                    ORDER BY e.word, e.id, s.id
+                ),
+                ranked AS (
+                    SELECT *,
+                        ROW_NUMBER() OVER (PARTITION BY word ORDER BY entry_id) AS homonym_rank,
+                        COUNT(*) OVER (PARTITION BY word) AS homonym_count
+                    FROM matched
                 )
-                SELECT DISTINCT ON (e.word)
-                    '사전' AS source, e.word AS title, s.pos,
-                    s.definition AS content, 0.92 AS score
-                FROM dict_entries e
-                JOIN dict_senses s ON e.id = s.entry_id
-                JOIN candidates c ON e.word = c.cand
-                WHERE s.pos = '명사'
-                ORDER BY e.word, s.id
-                LIMIT 10
+                SELECT word, pos, definition, homonym_rank, homonym_count
+                FROM ranked
+                WHERE homonym_rank <= 5
+                ORDER BY word, homonym_rank
+                LIMIT 60
             """, (qt, qlen, qlen))
-            exact_results.extend(cur.fetchall())
+            homonym_rows = cur.fetchall()
+
+            from itertools import groupby
+            for word, group in groupby(homonym_rows, key=lambda r: r["word"]):
+                group = list(group)
+                homonym_count = group[0]["homonym_count"]
+                if homonym_count > 1:
+                    content = (
+                        f"(동음이의어 {homonym_count}개 중 {len(group)}개 — "
+                        "질문에서 어떤 뜻인지 명확하지 않으면 아래 뜻을 나열하거나 어떤 뜻인지 되물을 것)\n"
+                        + "\n".join(f"{i+1}) {g['definition']}" for i, g in enumerate(group))
+                    )
+                else:
+                    content = group[0]["definition"]
+                exact_results.append({
+                    "source": "사전", "title": word, "pos": group[0]["pos"],
+                    "content": content, "score": 0.92,
+                })
 
             # 7-1b. 표준국어대사전 — 용언 활용형 매칭
             # 부분문자열 방식은 질의에 사전 표제어(기본형)가 그대로 들어있을 때만 잡힘.
