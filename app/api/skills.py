@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import json, httpx, asyncio
 from ..core.database import db_cursor
+from ..core.rate_limit import rate_limiter
 from ..core.skill_builder import (
     build_skill_with_llm, validate_code, load_skill, unload_skill, execute_code_skill
 )
@@ -85,7 +86,7 @@ def delete_skill(skill_id: str):
     return {"deleted": skill_id}
 
 # ── AI 스킬 자동 생성 (SSE 스트리밍) ─────────────────────────────────────────
-@router.post("/skills/generate")
+@router.post("/skills/generate", dependencies=[Depends(rate_limiter(max_requests=5, window_seconds=60))])
 async def generate_skill(data: SkillGenRequest):
     """자연어 요청 → LLM 코드 생성 → 검증 → DB 저장 → 동적 로드 (SSE)"""
 

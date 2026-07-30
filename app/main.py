@@ -53,11 +53,21 @@ async def log_requests(request: Request, call_next):
                 pass
     return response
 
+# 프론트엔드는 항상 이 백엔드와 같은 오리진에서 서빙됨 (운영: 빌드된 SPA를 직접 서빙,
+# 개발: vite가 /api를 서버사이드로 프록시) — 브라우저發 크로스 오리진 호출이 필요 없으므로
+# 로컬 접근 오리진만 명시적으로 허용한다.
+ALLOWED_ORIGINS = [
+    "http://localhost:9000",
+    "http://127.0.0.1:9000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 app.include_router(chat_router, prefix="/api")

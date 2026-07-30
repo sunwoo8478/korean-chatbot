@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import httpx, json, re
@@ -7,9 +7,13 @@ from ..rag.pipeline import run
 from ..rag.context_manager import preprocess, anchor_user_message
 from ..rag.summarizer import maybe_summarize, build_history_with_summary
 from ..core.config import settings
+from ..core.rate_limit import rate_limiter
 from .skills import get_active_tools, execute_skill
 
 router = APIRouter()
+
+# LLM 호출 엔드포인트 — IP당 분당 요청 수 제한 (ANTHROPIC_API_KEY 무제한 과금 방지)
+_chat_rate_limit = Depends(rate_limiter(max_requests=20, window_seconds=60))
 
 class HistoryMessage(BaseModel):
     role: str    # "user" | "assistant"
@@ -180,7 +184,7 @@ async def _stream_claude(rag: dict, api_key: str = ""):
 
 # ── SSE 스트리밍 엔드포인트 ─────────────────────────────────────────────────
 # 소스 먼저 → 토큰 스트림 → done 순서로 전송
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[_chat_rate_limit])
 async def chat_stream(req: ChatRequest):
     # ① 누적 요약 + 최근 4턴으로 히스토리 구성
     history_raw = [h.dict() for h in req.history] if req.history else []
@@ -251,7 +255,7 @@ async def chat_stream(req: ChatRequest):
     )
 
 # ── 기존 full 엔드포인트 (하위 호환) ────────────────────────────────────────
-@router.post("/chat/full")
+@router.post("/chat/full", dependencies=[_chat_rate_limit])
 async def chat_full(req: ChatRequest):
     rag = run(req.message, conv_id=req.conv_id or None)
 
