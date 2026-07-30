@@ -322,8 +322,6 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     # exact match로 찾은 용어/단어의 도메인을 DB에서 직접 추가 조회
     final_docs = _enrich_domains(final_docs, query)
 
-    context = group_context(final_docs)
-
     # 질문의 핵심 주어(컬럼/도메인/뜻풀이 대상 용어)를 뽑아서, 그 용어와 "정확히"
     # 같은 제목의 문서를 찾았는지 확인한다. 처음엔 "제목이 질의의 부분문자열인가"로
     # 체크했는데, exact match의 2~8자 무차별 부분문자열 생성 특성상 "번호"/"타입"/
@@ -341,9 +339,23 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     # 그냥 전체 질의를 주어로 오인해 오탐(진짜 답이 있는데도 경고를 띄우는 것)을
     # 내는 대신, 이 체크 자체를 건너뛴다.
     subject = _subject_m.group(1).strip() if _subject_m else None
+    has_exact_subject_match = bool(
+        subject and any(d.get("title") == subject for d in final_docs)
+    )
+
+    # 이미 깔끔한 정확 일치(공통표준용어/도메인 등 구조화 데이터)가 있으면, PDF 매뉴얼
+    # OCR 텍스트(여러 용어가 표 형태로 뒤섞여 있어 노이즈가 심함 — 예: 우편번호를
+    # 물어봤는데 같은 페이지에 있는 여권번호/외국인등록번호 값과 헷갈려 엉뚱한 길이를
+    # 답하는 경우가 실제로 있었음)는 컨텍스트에서 아예 뺀다. 구조화 데이터가 없을 때는
+    # PDF가 유일한 단서일 수 있으니 그대로 둔다.
+    context_docs = final_docs
+    if has_exact_subject_match:
+        context_docs = [d for d in final_docs if d.get("source") not in ("PDF매뉴얼", "PDF고시")]
+
+    context = group_context(context_docs)
 
     no_exact_hit_warning = ""
-    if subject and final_docs and not any(d.get("title") == subject for d in final_docs):
+    if subject and final_docs and not has_exact_subject_match:
         no_exact_hit_warning = (
             "\n\n[검색 결과 안내] 아래 문서 중 질문에 나온 용어와 문자 그대로 일치하는 "
             "항목이 없습니다. 유사해 보이는 참고 자료일 뿐이니, 이름이 비슷하다거나 "
@@ -371,7 +383,7 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
 
     result = {
         "context": full_context,
-        "docs": final_docs,
+        "docs": context_docs,
         "history": history,
         "system_prompt": SYSTEM_PROMPT,
         "user_message": user_message,
