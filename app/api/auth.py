@@ -1,10 +1,29 @@
 import hashlib, secrets, hmac
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 from ..core.database import db_cursor
 
 router = APIRouter()
+
+
+def require_admin(authorization: str = Header(default="")):
+    """관리자 전용 엔드포인트 의존성 — 세션 토큰이 is_admin=true 유저 것인지 확인.
+    이전엔 admin.py의 38개 라우트와 auth.py의 사용자 관리 라우트가 전혀 인증 체크가
+    없어서 누구나(로그인조차 없이) 전체 유저 목록 조회, 비밀번호 변경, 계정 삭제,
+    시스템 프롬프트 수정 등이 가능했음."""
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(401, "인증이 필요합니다.")
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT u.is_admin FROM user_sessions s
+            JOIN users u ON u.id = s.user_id
+            WHERE s.token=%s AND s.expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+    if not row or not row["is_admin"]:
+        raise HTTPException(403, "관리자 권한이 필요합니다.")
 
 def _hash_password(password: str, salt: str = None) -> tuple[str, str]:
     if salt is None:
@@ -112,7 +131,7 @@ def logout(body: dict):
     return {"ok": True}
 
 
-@router.get("/auth/users")
+@router.get("/auth/users", dependencies=[Depends(require_admin)])
 def list_users():
     with db_cursor() as cur:
         cur.execute("""
@@ -122,7 +141,7 @@ def list_users():
         return [dict(r) for r in cur.fetchall()]
 
 
-@router.patch("/auth/users/{user_id}/password")
+@router.patch("/auth/users/{user_id}/password", dependencies=[Depends(require_admin)])
 def change_password(user_id: str, body: dict):
     new_password = body.get("password", "")
     if len(new_password) < 4:
@@ -135,7 +154,7 @@ def change_password(user_id: str, body: dict):
     return {"ok": True}
 
 
-@router.delete("/auth/users/{user_id}")
+@router.delete("/auth/users/{user_id}", dependencies=[Depends(require_admin)])
 def delete_user(user_id: str):
     with db_cursor() as cur:
         cur.execute("DELETE FROM users WHERE id=%s", (user_id,))

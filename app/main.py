@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from contextlib import asynccontextmanager
 import time
 from .core.skill_builder import restore_code_skills
@@ -18,7 +18,7 @@ from .api.notifications import router as notif_router
 from .api.extras import router as extras_router
 from .api.column_export import router as column_router
 from .api.bookmarks import router as bookmarks_router
-from .api.auth import router as auth_router
+from .api.auth import router as auth_router, require_admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,7 +77,7 @@ app.include_router(skills_router, prefix="/api")
 app.include_router(export_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(standards_router, prefix="/api")
-app.include_router(admin_router, prefix="/api")
+app.include_router(admin_router, prefix="/api", dependencies=[Depends(require_admin)])
 app.include_router(notif_router, prefix="/api")
 app.include_router(extras_router, prefix="/api")
 app.include_router(column_router, prefix="/api")
