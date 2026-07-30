@@ -65,7 +65,10 @@ async def _stream_qwen(rag: dict, qwen_model: str = "35b", history: list = None)
         payload["tools"] = clean_tools
         payload["tool_choice"] = "auto"
     if is_ollama:
-        payload["options"] = {"think": False, "temperature": 0.3}
+        # 예전에 0.3으로 고정돼있어서 settings.vllm_temperature(0.1)와 어긋났음 —
+        # 온도가 높을수록 "근거에서는 없다고 판단하고 결론에서는 지어내는" 자기모순이
+        # 더 자주 나왔음(EXAONE에서 재현/확인). 설정값과 맞춰서 일관되게 낮춤.
+        payload["options"] = {"think": False, "temperature": settings.vllm_temperature}
     elif not is_mixtral:
         # Qwen 전용 파라미터 — Mixtral에는 전달하지 않음
         payload["chat_template_kwargs"] = {"enable_thinking": False}
