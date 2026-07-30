@@ -6,7 +6,7 @@ export function useConversations(username = '기본 사용자') {
 
   const loadList = useCallback(async () => {
     try {
-      const res = await fetch(`/api/conversations?username=${encodeURIComponent(username)}`);
+      const res = await fetch('/api/conversations');
       if (!res.ok) return;
       setConversations(await res.json());
     } catch {}
@@ -34,7 +34,7 @@ export function useConversations(username = '기본 사용자') {
     const res = await fetch('/api/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title.slice(0, 40), model: model || 'qwen', username }),
+      body: JSON.stringify({ title: title.slice(0, 40), model: model || 'qwen' }),
     });
     return res.json();
   }, [username]);

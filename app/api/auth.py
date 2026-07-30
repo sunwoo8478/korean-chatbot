@@ -25,6 +25,26 @@ def require_admin(authorization: str = Header(default="")):
     if not row or not row["is_admin"]:
         raise HTTPException(403, "관리자 권한이 필요합니다.")
 
+
+def get_current_username(authorization: str = Header(default="")) -> str:
+    """세션 토큰으로 실제 유저명을 확인한다. conversations.py 등이 클라이언트가
+    보낸 username 쿼리파라미터를 그대로 믿어서, 다른 사람 username만 알면(순차적인
+    이선우/이선우2/이선우3처럼 추측도 쉬움) 그 사람의 대화 기록을 통째로 읽을 수
+    있었음 — 토큰에서 직접 유저명을 뽑아 클라이언트가 주장하는 값 대신 사용한다."""
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(401, "인증이 필요합니다.")
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT username FROM user_sessions
+            WHERE token=%s AND expires_at > NOW()
+        """, (token,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(401, "세션이 만료됐습니다. 다시 로그인하세요.")
+    return row["username"]
+
+
 def _hash_password(password: str, salt: str = None) -> tuple[str, str]:
     if salt is None:
         salt = secrets.token_hex(16)
