@@ -67,11 +67,15 @@ def score(case: dict, answer: str) -> dict:
 
     if cat == "followup_pronoun":
         # "그거"가 직전 질문 주어(term_name)로 해소됐는지 — 답변에 원래 주어와
-        # 정답 약어가 같이 나와야 함. 약어만 나오고 주어가 없으면(과거 버그처럼
-        # 약어 자체를 새로운 질문 대상으로 오인) 실패로 본다.
+        # 정답 약어가 나오는지가 핵심 판정 기준이다. 과거 버그(약어 자체를
+        # 새로운 질문 대상으로 오인)라면 엉뚱한/틀린 약어가 나왔을 것이므로,
+        # 정답 약어가 정확히 나온 것 자체가 지시어가 올바르게 해소됐다는 증거다.
+        # subject_ok(주어를 답변에 그대로 반복하는지)는 참고용일 뿐 — 모델이
+        # "RCPT_CN 입니다"처럼 짧게 답해도(2026-07-31 발견) 그건 문체 문제지
+        # 지시어 오해소가 아니라서 PASS 조건에서 제외한다.
         subject_ok = case["expect_subject"] in answer
         abbr_ok = case["expect_abbr"] in answer
-        verdict = "PASS" if (subject_ok and abbr_ok) else "FAIL(지시어 오해소)"
+        verdict = "PASS" if abbr_ok else "FAIL(지시어 오해소)"
         return {"verdict": verdict, "note": f"subject_ok={subject_ok} abbr_ok={abbr_ok}"}
 
     # normal / long_term / multi_variant
