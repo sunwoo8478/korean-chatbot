@@ -45,9 +45,23 @@ def test_subject_not_found_only_strips_pdf():
     assert any(d["title"] == "여부C1" for d in result)
 
 
+def test_unrelated_dict_entry_filtered_when_subject_is_dict_word():
+    # "조사가 무슨 뜻이야?"의 부분문자열 생성이 "사가"(전혀 다른 표제어)까지
+    # 우연히 정확매칭시키는 경우 — 주어("조사") 자신이 사전 표제어면 다른
+    # 표제어("사가")는 제거하고, 주어 자신은 남는다.
+    docs = [
+        {"source": "사전", "title": "조사", "content": "동음이의어 32개..."},
+        {"source": "사전", "title": "사가", "content": "동음이의어 15개..."},
+    ]
+    result = _resolve_source_conflicts(docs, subject="조사")
+    titles = {d["title"] for d in result if d["source"] == "사전"}
+    assert titles == {"조사"}, titles
+
+
 if __name__ == "__main__":
     test_pdf_always_stripped()
     test_sibling_domain_filtered_when_referenced()
     test_no_domain_reference_skips_domain_filter()
     test_subject_not_found_only_strips_pdf()
+    test_unrelated_dict_entry_filtered_when_subject_is_dict_word()
     print("all tests passed")

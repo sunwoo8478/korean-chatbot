@@ -85,9 +85,13 @@ def _resolve_source_conflicts(docs: list[dict], subject: str) -> list[dict]:
        도메인이 아닌 다른 공통표준도메인 문서 (예: "말소일시"→연월일시분초D인데
        의미가 거의 같은 연월일시분초C14가 유사도로 같이 딸려오는 경우)
 
-    한계: 필드 단위(도메인명)로만 판정하는 휴리스틱이라, 사전(동음이의어) 등
-    다른 소스 조합에서 벌어지는 유사한 충돌은 아직 못 잡는다 — 발견되는 대로
-    이 함수에 케이스를 추가한다.
+    3. 사전 정확매칭의 질의 경계 침범 — "조사가 무슨 뜻이야?"의 부분문자열
+       생성이 "사가"(전혀 다른 표제어, 동음이의어 15개)까지 우연히 정확매칭
+       시켜서, 질문과 무관한 단어의 뜻풀이가 같이 컨텍스트에 들어가는 경우
+       (2026-07-31 발견). 주어 자체가 사전 표제어면 다른 표제어는 제거한다.
+
+    한계: 위 3가지 외 다른 소스 조합에서 벌어지는 유사한 충돌은 아직 못 잡는다
+    — 발견되는 대로 이 함수에 케이스를 추가한다.
     """
     import re
     filtered = [d for d in docs if d.get("source") not in ("PDF매뉴얼", "PDF고시")]
@@ -99,6 +103,12 @@ def _resolve_source_conflicts(docs: list[dict], subject: str) -> list[dict]:
             filtered = [
                 d for d in filtered
                 if d.get("source") != "공통표준도메인" or d.get("title") in ref_domains
+            ]
+
+        if subject_doc.get("source") == "사전":
+            filtered = [
+                d for d in filtered
+                if d.get("source") != "사전" or d.get("title") == subject
             ]
 
     return filtered
