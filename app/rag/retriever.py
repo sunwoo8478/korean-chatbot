@@ -188,11 +188,11 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             """, (qt, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
-            # 7-2. 공통표준용어 — 복합어(7~8자) 포함
+            # 7-2. 공통표준용어 — 8자 초과 장문 용어도 커버 (질의 길이만큼 전부)
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
-                    FROM generate_series(1, %s) i, generate_series(2, 8) len
+                    FROM generate_series(1, %s) i, generate_series(2, %s) len
                     WHERE i + len - 1 <= %s
                 )
                 SELECT '공통표준용어' AS source, term_name AS title, NULL AS pos,
@@ -202,14 +202,14 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 FROM std_term t
                 JOIN candidates c ON t.term_name = c.cand
                 LIMIT 8
-            """, (qt, qlen, qlen))
+            """, (qt, qlen, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
             # 7-3. 공통표준단어
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
-                    FROM generate_series(1, %s) i, generate_series(2, 8) len
+                    FROM generate_series(1, %s) i, generate_series(2, %s) len
                     WHERE i + len - 1 <= %s
                 )
                 SELECT '공통표준단어' AS source, word_name AS title, NULL AS pos,
@@ -219,14 +219,14 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 FROM std_word w
                 JOIN candidates c ON w.word_name = c.cand
                 LIMIT 8
-            """, (qt, qlen, qlen))
+            """, (qt, qlen, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
             # 7-4. 공통표준도메인 — 용어·단어의 domain_name 경유 자동 보완
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
-                    FROM generate_series(1, %s) i, generate_series(2, 8) len
+                    FROM generate_series(1, %s) i, generate_series(2, %s) len
                     WHERE i + len - 1 <= %s
                 ),
                 matched_domains AS (
@@ -246,7 +246,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 FROM std_domain d
                 JOIN matched_domains m ON d.domain_name ILIKE m.domain_name || '%%'
                 LIMIT 5
-            """, (qt, qlen, qlen))
+            """, (qt, qlen, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
     # ── 중복 제거 ─────────────────────────────────────────────────────────
