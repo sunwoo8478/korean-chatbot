@@ -148,6 +148,8 @@ docker compose --env-file .env.docker up -d --build
 curl http://localhost:9000/health
 ```
 
+이 상태(빌드된 이미지)는 코드를 바꿀 때마다 매번 `--build`로 리빌드해야 반영됩니다. `docker-compose.override.yml`이 자동으로 같이 적용되므로(docker compose 표준 동작), 위 명령을 그대로 다시 실행하기만 하면 `app/`이 바인드마운트되고 `--reload`로 떠서 코드 변경이 리빌드 없이 바로 반영됩니다. 프로덕션 배포 시에는 `-f docker-compose.yml`로 override를 명시적으로 빼야 합니다.
+
 ### 수동 실행 (개발용)
 
 핫리로드가 필요한 로컬 개발 시에는 아래처럼 백엔드/프런트엔드를 각각 띄웁니다.
