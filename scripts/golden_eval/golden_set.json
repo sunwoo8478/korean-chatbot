@@ -1,0 +1,446 @@
+[
+  {
+    "category": "normal",
+    "question": "노출여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "EXPSR_YN"
+  },
+  {
+    "category": "normal",
+    "question": "취학전아동교육비 컬럼 데이터타입이 뭐야?",
+    "expect_type": "NUMERIC",
+    "expect_length": 15,
+    "expect_domain": "비용N15",
+    "expect_abbr": "PSCHLD_EDUCO"
+  },
+  {
+    "category": "normal",
+    "question": "파일저장여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "FILE_STRG_YN"
+  },
+  {
+    "category": "normal",
+    "question": "말소일시 컬럼 데이터타입이 뭐야?",
+    "expect_type": "DATETIME",
+    "expect_length": null,
+    "expect_domain": "연월일시분초D",
+    "expect_abbr": "ERSR_DT"
+  },
+  {
+    "category": "normal",
+    "question": "유보비율 컬럼 데이터타입이 뭐야?",
+    "expect_type": "NUMERIC",
+    "expect_length": 5,
+    "expect_domain": "율N5,2",
+    "expect_abbr": "DFR_RT"
+  },
+  {
+    "category": "normal",
+    "question": "시스템등록일자 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 8,
+    "expect_domain": "연월일C8",
+    "expect_abbr": "SYS_REG_YMD"
+  },
+  {
+    "category": "normal",
+    "question": "학위취득일자 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 8,
+    "expect_domain": "연월일C8",
+    "expect_abbr": "DGR_ACQS_YMD"
+  },
+  {
+    "category": "normal",
+    "question": "발표시간 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 6,
+    "expect_domain": "시분초C6",
+    "expect_abbr": "PRSNTN_HR"
+  },
+  {
+    "category": "normal",
+    "question": "선정종료일자 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 8,
+    "expect_domain": "연월일C8",
+    "expect_abbr": "SLCTN_END_YMD"
+  },
+  {
+    "category": "normal",
+    "question": "품의일자 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 8,
+    "expect_domain": "연월일C8",
+    "expect_abbr": "CNSL_YMD"
+  },
+  {
+    "category": "normal",
+    "question": "잔금지급일자 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 8,
+    "expect_domain": "연월일C8",
+    "expect_abbr": "BALNC_GIVE_YMD"
+  },
+  {
+    "category": "normal",
+    "question": "신용평가점수 컬럼 데이터타입이 뭐야?",
+    "expect_type": "NUMERIC",
+    "expect_length": 10,
+    "expect_domain": "수N10,3",
+    "expect_abbr": "CRDRTG_SCR"
+  },
+  {
+    "category": "normal",
+    "question": "명절휴가비 컬럼 데이터타입이 뭐야?",
+    "expect_type": "NUMERIC",
+    "expect_length": 15,
+    "expect_domain": "비용N15",
+    "expect_abbr": "NHLDY_VABNS"
+  },
+  {
+    "category": "normal",
+    "question": "계약완료일시 컬럼 데이터타입이 뭐야?",
+    "expect_type": "DATETIME",
+    "expect_length": null,
+    "expect_domain": "연월일시분초D",
+    "expect_abbr": "CTRT_CMPTN_DT"
+  },
+  {
+    "category": "normal",
+    "question": "소득공제여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "ICMDCT_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "첨부파일암호화여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "ATCH_FILE_ENCPT_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "징수의무자사업자등록번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 10,
+    "expect_domain": "사업자등록번호C10",
+    "expect_abbr": "CLCTN_OBLGR_BRNO"
+  },
+  {
+    "category": "long_term",
+    "question": "천연기념물지정번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "VARCHAR",
+    "expect_length": 20,
+    "expect_domain": "번호V20",
+    "expect_abbr": "NTMN_DSGN_NO"
+  },
+  {
+    "category": "long_term",
+    "question": "보안서약서동의여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "SCRTY_WROT_AGRE_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "다자녀추가공제여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "MCHLD_ADD_DDC_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "피보험자주민등록번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 13,
+    "expect_domain": "주민등록번호C13",
+    "expect_abbr": "ISRT_RRNO"
+  },
+  {
+    "category": "long_term",
+    "question": "임시비밀번호발급여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "TMPR_PSWD_ISSU_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "금융기관담당자전화번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "VARCHAR",
+    "expect_length": 11,
+    "expect_domain": "전화번호V11",
+    "expect_abbr": "FNST_PIC_TELNO"
+  },
+  {
+    "category": "long_term",
+    "question": "전자세금계산서여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "ETXIV_YN"
+  },
+  {
+    "category": "long_term",
+    "question": "문자메시지수신여부 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 1,
+    "expect_domain": "여부C1",
+    "expect_abbr": "LTR_MSG_RCPTN_YN"
+  },
+  {
+    "category": "homonym",
+    "question": "난가 무슨 뜻이야?",
+    "expect_any_of_defs": [
+      "천자(天子)의 수레나 깃발에 달던 난새 모양으로 만든 방울. 오음(五音)을 내는 난새의 아름다운 울음소리에 방울 소리를 견주어 그 이름을 지었다.",
+      "중국 전설에 나오는 상상의 새. 모양은 닭과 비슷하나 깃은 붉은빛에 다섯 가지 색채가 섞여 있으며, 소리는 오음(五音)과 같다고 한다.",
+      "전쟁이나 병란(兵亂).",
+      "‘난하다01’의 어근.",
+      "‘난하다02’의 어근.",
+      "난초과의 식물을 통틀어 이르는 말. 뿌리가 굵고 잎은 홑잎이며, 꽃은 좌우 대칭이고 열매는 삭과(蒴果)이다. 450속 1만 5000여 종이 알려져 있다. 열대 지방이 원산지이다.",
+      "‘네덜란드’의 음역어.",
+      "가사(袈裟)의 가장자리에 덧대는 좁은 헝겊.",
+      "암컷의 생식 세포. 유성 생식을 하는 생물에서 볼 수 있는 것으로 감수 분열에 의하여 생기며, 수정 후 발달하여 배(胚)를 형성한다.",
+      "노리개, 목걸이, 반지 따위의 장신구에 거미발을 물려 박은 비취, 진주, 옥 따위의 보석 알.",
+      "책, 신문, 잡지 따위의 지면에 글이나 그림 따위를 싣기 위하여 마련한 자리.",
+      "‘구분된 지면’의 뜻을 나타내는 말.",
+      "‘나는’이 줄어든 말."
+    ],
+    "homonym_count": 10
+  },
+  {
+    "category": "homonym",
+    "question": "무기가 무슨 뜻이야?",
+    "expect_any_of_defs": [
+      "생명이나 활력을 지니고 있지 않음. 또는 그런 것.",
+      "생명을 지니지 않은 물질을 통틀어 이르는 말. 물, 흙, 공기, 돌, 광물 따위가 있다.",
+      "탄소 화합물 이외의 모든 원소 및 무기 화합물을 대상으로 하여 그 구조, 화학적 성질, 화학 반응 따위를 연구하는 학문. 화학의 한 분야이다.",
+      "탄소 이외의 원소로 이루어진 화합물을 통틀어 이르는 말. 이온 결합·금속 결합·배위 결합의 화합물이 많으며, 탄산이나 이산화 탄소와 같은 간단한 탄소 화합물은 여기에 포함된다.",
+      "대궐에서 잔치를 벌일 때에 춤을 추던 기생.",
+      "춤추는 기교나 재주.",
+      "거짓으로 꾸며 남을 속임.",
+      "무인의 용감하고 굳센 기상.",
+      "전쟁이나 싸움에 사용되는 기구를 통틀어 이르는 말.",
+      "어떤 일을 하거나 이루기 위한 중요한 수단이나 도구를 비유적으로 이르는 말.",
+      "‘무기하다01’의 어근.",
+      "언제까지라고 정한 기한이 없음.",
+      "무도에 관한 재주.",
+      "석가모니가 다른 종교가로부터 받은 질문에 가부(可否)를 답하지 않고 침묵하였음을 이르는 말.",
+      "차별을 두지 않는다는 뜻으로, 선(善)도 아니고 악(惡)도 아닌 것을 이르는 말. 스토아 철학에서, 현인(賢人)의 철학적 생활 태도를 반영한 개념이다.",
+      "아무것도 적지 않음."
+    ],
+    "homonym_count": 10
+  },
+  {
+    "category": "homonym",
+    "question": "사연가 무슨 뜻이야?",
+    "expect_any_of_defs": [
+      "그렇게 하도록 시킴.",
+      "처마 서까래의 끝에 덧얹는 네모지고 짧은 서까래. 처마 끝을 위로 들어 올려 모양이 나게 한다.",
+      "문인들이 모이는 자리.",
+      "사방의 자리라는 뜻으로, 주위의 사람들을 이르는 말.",
+      "사람을 죽음에 이르게 하는 현재의 부차적인 여러 조건.",
+      "연기와 같이 자욱하게 일어나는 모래 섞인 흙먼지.",
+      "일의 앞뒤 사정과 까닭.",
+      "제빗과의 새. 몸의 길이는 18cm 정도이며 등은 윤기가 있는 푸른빛을 띤 검은색이고 배는 흰색이다. 이마에서 위쪽 가슴에 걸쳐 검은 테로 둘러싸인 밤색의 큰 반점이 있다. 꽁지가 가위 모양으로 갈라져 있고 날개가 발달하여 빨리 난다. 열대 또는 아열대인 인도, 태국, 캄보디아, 베트남, 오스트레일리아 등지에서 겨울을 보내고 봄에 우리나라에서 처마 밑에 집을 짓고 살다가 가을에 날아간다. 한국, 일본, 중국 등지에서 번식한다.",
+      "나라에서 잔치를 베풀어 주는 일. 또는 그 잔치.",
+      "편지나 말의 내용."
+    ],
+    "homonym_count": 10
+  },
+  {
+    "category": "homonym",
+    "question": "청사가 무슨 뜻이야?",
+    "expect_any_of_defs": [
+      "집채 안에 바닥과 사이를 띄우고 깐 널빤지. 또는 그 널빤지를 깔아 놓은 곳.",
+      "관아에서 하는 일.",
+      "예전에, 벼슬아치들이 모여 나랏일을 처리하던 곳.",
+      "대한 제국 때에, 경무청에서 부리던 사령(使令).",
+      "관청의 사무실로 쓰는 건물.",
+      "빛깔이 푸른 실.",
+      "청렴하고 결백한 선비.",
+      "‘한호02’의 호.",
+      "초(草) 잡았던 글을 깨끗이 베껴 씀.",
+      "조선 시대에, 통신사를 일본에 보내 달라고 교섭하러 오던 대마도의 사신.",
+      "불보살을 부르거나 죽은 사람의 넋을 부르는 글.",
+      "시키는 대로 심부름함.",
+      "역사상의 기록. 예전에 종이가 없을 때 푸른 대의 껍질을 불에 구워 푸른빛과 기름을 없애고 사실(史實)을 기록하던 데서 유래한다."
+    ],
+    "homonym_count": 11
+  },
+  {
+    "category": "homonym",
+    "question": "반수가 무슨 뜻이야?",
+    "expect_any_of_defs": [
+      "일이 아주 쉬움.",
+      "덧셈에 대한 역원. 어떤 수의 부호를 바꾸어 얻게 되는 수로, 더했을 때 0이 되는 수이다.",
+      "자는 둥 마는 둥 아주 얕은 잠을 잠.",
+      "윗사람이 가는 곳을 짝이 되어 따름.",
+      "반궁(泮宮)의 옆을 흐르는 물.",
+      "수석(首席)의 자리에 있는 사람.",
+      "봇짐장수나 등짐장수의 우두머리.",
+      "백반을 갈아 푼 물에 콜로이드를 화합시킨 물질. 종이에 발라 먹이나 물감 따위가 번지는 것을 막는 데 쓴다.",
+      "대야나 사발에 가득한 물이라는 뜻으로, 법의 공평함을 이르는 말.",
+      "전체의 절반이 되는 수.",
+      "감수 분열의 결과 반으로 줄어든 염색체 수. n으로 나타낸다.",
+      "대학에 입학한 상태에서 다른 대학이나 학과에 입학하기 위하여 공부함."
+    ],
+    "homonym_count": 10
+  },
+  {
+    "category": "multi_variant",
+    "question": "전화번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "VARCHAR",
+    "expect_length": 11,
+    "expect_domain": "전화번호V11",
+    "expect_abbr": "TELNO"
+  },
+  {
+    "category": "multi_variant",
+    "question": "우편번호 컬럼 데이터타입이 뭐야?",
+    "expect_type": "CHAR",
+    "expect_length": 5,
+    "expect_domain": "우편번호C5",
+    "expect_abbr": "ZIP"
+  },
+  {
+    "category": "followup_pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "유효여부 컬럼 데이터타입 알려줘"
+      },
+      {
+        "role": "assistant",
+        "content": "**유효여부** 컬럼의 데이터 타입은 **CHAR** 입니다. 영문약어는 **VLD_YN** 입니다."
+      }
+    ],
+    "question": "그럼 그거 영문약어는 뭐야?",
+    "expect_subject": "유효여부",
+    "expect_abbr": "VLD_YN"
+  },
+  {
+    "category": "followup_pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "결재순서 컬럼 데이터타입 알려줘"
+      },
+      {
+        "role": "assistant",
+        "content": "**결재순서** 컬럼의 데이터 타입은 **NUMERIC** 입니다. 영문약어는 **ATRZ_SEQ** 입니다."
+      }
+    ],
+    "question": "그럼 그거 영문약어는 뭐야?",
+    "expect_subject": "결재순서",
+    "expect_abbr": "ATRZ_SEQ"
+  },
+  {
+    "category": "followup_pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "훈련내용 컬럼 데이터타입 알려줘"
+      },
+      {
+        "role": "assistant",
+        "content": "**훈련내용** 컬럼의 데이터 타입은 **VARCHAR** 입니다. 영문약어는 **TRNG_CN** 입니다."
+      }
+    ],
+    "question": "그럼 그거 영문약어는 뭐야?",
+    "expect_subject": "훈련내용",
+    "expect_abbr": "TRNG_CN"
+  },
+  {
+    "category": "followup_pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "일조시간 컬럼 데이터타입 알려줘"
+      },
+      {
+        "role": "assistant",
+        "content": "**일조시간** 컬럼의 데이터 타입은 **CHAR** 입니다. 영문약어는 **SNSH_HR** 입니다."
+      }
+    ],
+    "question": "그럼 그거 영문약어는 뭐야?",
+    "expect_subject": "일조시간",
+    "expect_abbr": "SNSH_HR"
+  },
+  {
+    "category": "followup_pronoun",
+    "history": [
+      {
+        "role": "user",
+        "content": "통계제외여부 컬럼 데이터타입 알려줘"
+      },
+      {
+        "role": "assistant",
+        "content": "**통계제외여부** 컬럼의 데이터 타입은 **CHAR** 입니다. 영문약어는 **STATS_EXCL_YN** 입니다."
+      }
+    ],
+    "question": "그럼 그거 영문약어는 뭐야?",
+    "expect_subject": "통계제외여부",
+    "expect_abbr": "STATS_EXCL_YN"
+  },
+  {
+    "category": "nonexistent",
+    "question": "우주선일련번호 컬럼 데이터타입 알려줘",
+    "expect_not_found": true
+  },
+  {
+    "category": "nonexistent",
+    "question": "타임머신소유자여부 컬럼 데이터타입 알려줘",
+    "expect_not_found": true
+  },
+  {
+    "category": "nonexistent",
+    "question": "마법지팡이등록번호 컬럼 데이터타입 알려줘",
+    "expect_not_found": true
+  },
+  {
+    "category": "nonexistent",
+    "question": "용의비늘색상코드 컬럼 데이터타입 알려줘",
+    "expect_not_found": true
+  },
+  {
+    "category": "nonexistent",
+    "question": "은하계주소V99 컬럼 데이터타입 알려줘",
+    "expect_not_found": true
+  },
+  {
+    "category": "comparison",
+    "question": "공통표준용어랑 공통표준단어의 차이를 알려줘",
+    "expect_terms": [
+      "공통표준용어",
+      "공통표준단어"
+    ]
+  },
+  {
+    "category": "comparison",
+    "question": "공통표준용어랑 공통표준도메인의 차이가 뭐야?",
+    "expect_terms": [
+      "공통표준용어",
+      "공통표준도메인"
+    ]
+  },
+  {
+    "category": "comparison",
+    "question": "공통표준단어랑 표준국어대사전의 차이를 설명해줘",
+    "expect_terms": [
+      "공통표준단어",
+      "표준국어대사전"
+    ]
+  }
+]

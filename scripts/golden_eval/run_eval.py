@@ -6,8 +6,7 @@ golden_set.json의 각 케이스를 실제 /api/chat/full에 던지고, 답변�
 import json
 import re
 import time
-
-import requests
+import urllib.request
 
 # chat/full은 하위호환용 레거시 엔드포인트라 history를 무시하고 rewrite_query
 # (꼬리물기 지시어 해소)도 안 거친다 — 실제 프론트가 쓰는 chat/stream을 써야
@@ -18,18 +17,17 @@ DATA_TYPE_WORDS = ("CHAR", "VARCHAR", "NUMERIC")
 
 
 def ask(question: str, history: list = None, timeout: int = 90) -> str:
-    resp = requests.post(
-        API, json={"message": question, "history": history or []},
-        stream=True, timeout=timeout,
-    )
-    resp.raise_for_status()
+    body = json.dumps({"message": question, "history": history or []}).encode()
+    req = urllib.request.Request(API, data=body, headers={"Content-Type": "application/json"})
     answer = ""
-    for line in resp.iter_lines(decode_unicode=True):
-        if not line or not line.startswith("data: "):
-            continue
-        payload = json.loads(line[6:])
-        if payload.get("type") == "token":
-            answer += payload["text"]
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        for line in resp:
+            line = line.decode("utf-8").strip()
+            if not line.startswith("data: "):
+                continue
+            payload = json.loads(line[6:])
+            if payload.get("type") == "token":
+                answer += payload["text"]
     return answer
 
 
