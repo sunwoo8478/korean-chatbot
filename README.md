@@ -173,6 +173,14 @@ npm run dev
 
 Vite 개발 서버는 `/api` 요청을 `http://localhost:9000`으로 전달합니다.
 
+**리랭커 서비스** (`RERANKER_URL`, 기본 `localhost:8100`) — 없어도 동작하지만(점수순 정렬로 폴백) 검색 품질이 떨어집니다. bge-reranker-v2-m3 기반 로컬 서비스를 Ollama처럼 네이티브로 띄웁니다:
+
+```bash
+cd scripts/reranker_service
+/usr/bin/python3 -m pip install -r requirements.txt   # 최초 1회, torch 포함이라 용량 큼
+pm2 start ../../ecosystem.config.js --only korean-chatbot-reranker
+```
+
 ## 검증
 
 ```bash
