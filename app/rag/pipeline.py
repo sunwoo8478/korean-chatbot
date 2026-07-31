@@ -365,6 +365,19 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     if has_exact_subject_match:
         context_docs = [d for d in final_docs if d.get("source") not in ("PDF매뉴얼", "PDF고시")]
 
+        # 벡터 검색(순수 임베딩 유사도)이 정확 일치한 주어와 무관한 형제 도메인을
+        # 별도로 끌어오는 경우가 있다(예: "말소일시"→연월일시분초D인데, 의미가 거의
+        # 같은 연월일시분초C14도 유사도로 같이 딸려와서 모델이 데이터타입을 혼동함).
+        # 주어 문서가 실제로 참조하는 도메인만 남기고 나머지 공통표준도메인 문서는 제외.
+        subject_doc = next((d for d in context_docs if d.get("title") == subject), None)
+        if subject_doc:
+            ref_domains = set(_re3.findall(r'\[도메인:\s*([^\]]+)\]', subject_doc.get("content", "")))
+            if ref_domains:
+                context_docs = [
+                    d for d in context_docs
+                    if d.get("source") != "공통표준도메인" or d.get("title") in ref_domains
+                ]
+
     context = group_context(context_docs)
 
     no_exact_hit_warning = ""

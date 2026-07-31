@@ -107,11 +107,10 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             pass  # 테이블 없으면 건너뜀
 
         # ── 7. 부분 문자열 exact match (리랭킹 우회) ─────────────────────────
-        # 쿼리에서 2~8자 모든 부분 문자열을 생성하여 사전·공통표준 동시 조회
-        # → '주민등록번호'의 → 주민(2), 등록(2), 번호(2), 주민등록번호(7) 등 자동 추출
+        # 쿼리에서 2자~질의 전체 길이까지 모든 부분 문자열을 생성하여 사전·공통표준 동시 조회
+        # → '주민등록번호'의 → 주민(2), 등록(2), 번호(2), 주민등록번호(6) 등 자동 추출
         if qt:
             qlen = len(qt)
-            params4 = (qt, qlen, qlen, qt)   # candidates CTE 4번 사용
 
             # 7-1. 표준국어대사전 — 명사 우선
             # 예전엔 DISTINCT ON (e.word)로 동음이의어("조사"처럼 뜻이 32개인 단어)여도
@@ -122,7 +121,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
-                    FROM generate_series(1, %s) i, generate_series(2, 6) len
+                    FROM generate_series(1, %s) i, generate_series(2, %s) len
                     WHERE i + len - 1 <= %s
                 ),
                 matched AS (
@@ -145,7 +144,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 WHERE homonym_rank <= 5
                 ORDER BY word, homonym_rank
                 LIMIT 60
-            """, (qt, qlen, qlen))
+            """, (qt, qlen, qlen, qlen))
             homonym_rows = cur.fetchall()
 
             from itertools import groupby
@@ -173,7 +172,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
             cur.execute("""
                 WITH candidates AS (
                     SELECT DISTINCT substring(%s, i, len) AS cand
-                    FROM generate_series(1, %s) i, generate_series(2, 6) len
+                    FROM generate_series(1, %s) i, generate_series(2, %s) len
                     WHERE i + len - 1 <= %s
                 )
                 SELECT DISTINCT ON (e.word)
@@ -185,7 +184,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 JOIN dict_senses s ON s.entry_id = e.id
                 ORDER BY e.word, s.id
                 LIMIT 10
-            """, (qt, qlen, qlen))
+            """, (qt, qlen, qlen, qlen))
             exact_results.extend(cur.fetchall())
 
             # 7-2. 공통표준용어 — 8자 초과 장문 용어도 커버 (질의 길이만큼 전부)
@@ -234,6 +233,11 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                     UNION
                     SELECT domain_class_name FROM std_word w JOIN candidates c ON w.word_name = c.cand
                         WHERE w.domain_class_name IS NOT NULL
+                          -- 질의 자체가 이미 공통표준용어와 완전일치하면(7-2가 이미 그 용어의
+                          -- 정확한 도메인을 찾음) 구성 단어 경유의 느슨한 도메인군 확장은 생략
+                          -- — 안 그러면 형제 도메인(예: 연월일시분초D vs 연월일시분초C14)이
+                          -- 컨텍스트에 같이 끼어들어 모델이 엉뚱한 데이터타입을 고르게 됨
+                          AND NOT EXISTS (SELECT 1 FROM std_term t3 WHERE t3.term_name = %s)
                 )
                 SELECT '공통표준도메인' AS source, d.domain_name AS title, NULL AS pos,
                     COALESCE(d.domain_desc,'') ||
@@ -246,7 +250,7 @@ def retrieve(embedding: list[float], query_text: str = "") -> dict:
                 FROM std_domain d
                 JOIN matched_domains m ON d.domain_name ILIKE m.domain_name || '%%'
                 LIMIT 5
-            """, (qt, qlen, qlen, qlen))
+            """, (qt, qlen, qlen, qlen, qt))
             exact_results.extend(cur.fetchall())
 
     # ── 중복 제거 ─────────────────────────────────────────────────────────
