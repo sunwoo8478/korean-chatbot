@@ -109,7 +109,24 @@ def main():
     # 요약
     from collections import Counter
     by_cat_verdict = Counter((r["category"], r["verdict"]) for r in results)
-    lines = ["# 골든셋 평가 리포트\n", f"총 {len(results)}건\n"]
+
+    # REVIEW(수동확인 전용, 예: homonym)는 자동 채점 대상이 아니라 PASS율 계산에서 제외
+    scorable = [r for r in results if r["verdict"] != "REVIEW"]
+    pass_n = sum(1 for r in scorable if r["verdict"] == "PASS")
+    pass_rate = (pass_n / len(scorable) * 100) if scorable else 0.0
+
+    # 할루시네이션 계열(존재하지 않는 사실을 지어냄) verdict만 별도 집계 —
+    # 단순 오답(FAIL)과 구분해서 추적한다
+    HALLUC_MARKERS = ("할루시네이션", "자기모순", "가짜URL")
+    halluc_n = sum(1 for r in results if any(m in r["verdict"] for m in HALLUC_MARKERS))
+    halluc_rate = (halluc_n / len(results) * 100) if results else 0.0
+
+    lines = [
+        "# 골든셋 평가 리포트\n",
+        f"총 {len(results)}건 (자동채점 대상 {len(scorable)}건, REVIEW {len(results) - len(scorable)}건 제외)\n",
+        f"**PASS율**: {pass_n}/{len(scorable)} ({pass_rate:.1f}%)\n",
+        f"**할루시네이션 비율**: {halluc_n}/{len(results)} ({halluc_rate:.1f}%)\n",
+    ]
     for cat in sorted(set(r["category"] for r in results)):
         lines.append(f"\n## {cat}")
         for verdict in sorted(set(v for (c, v) in by_cat_verdict if c == cat)):

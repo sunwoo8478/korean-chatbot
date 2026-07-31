@@ -8,6 +8,10 @@ DB에서 정답이 있는 질문(골든셋)을 자동 생성한다.
 - long_term:         8자를 넘는 표준용어 (exact match 부분문자열 한계를 넘는 케이스)
 - homonym:           동음이의어가 많은 사전 표제어 (앰비귀티 케이스)
 - multi_variant:     같은 접두어로 여러 도메인 변형이 있는 용어 (우편번호처럼 헷갈리기 쉬운 케이스)
+- domain_conflict:   용어 자체는 도메인이 하나로 확정되는데, 같은 계열(접두어)의 형제
+                     도메인이 2개 이상 존재하는 경우 (예: 연월일시분초D ↔ 연월일시분초C14 —
+                     의미가 거의 같아 벡터유사도로 형제 도메인이 컨텍스트에 같이 딸려와
+                     혼동을 일으키는 케이스, 2026-07-31 발견 버그의 전용 회귀 카테고리)
 - nonexistent:       DB에 없는 가짜 용어 (할루시네이션 + 근거/결론 자기모순 테스트)
 - comparison:        두 개념의 차이를 묻는 질문 (사실 나열만 하고 종합 안 하는 회귀 테스트)
 - followup_pronoun:  꼬리물기 질문에서 "그거" 같은 지시어가 직전 질문 주어로 올바르게 해소되는지
@@ -20,16 +24,18 @@ import sys
 sys.path.insert(0, ".")
 from app.core.database import db_cursor
 
-N_NORMAL = 15
-N_LONG = 10
-N_HOMONYM = 5
-N_MULTI_VARIANT = 10
-N_NONEXISTENT = 5
-N_FOLLOWUP = 5
+N_NORMAL = 25
+N_LONG = 15
+N_HOMONYM = 8
+N_MULTI_VARIANT = 15
+N_DOMAIN_CONFLICT = 10
+N_NONEXISTENT = 8
+N_FOLLOWUP = 8
 
 FAKE_TERMS = [
     "우주선일련번호", "타임머신소유자여부", "마법지팡이등록번호",
-    "용의비늘색상코드", "은하계주소V99",
+    "용의비늘색상코드", "은하계주소V99", "유령출몰빈도수",
+    "드래곤알부화예정일시", "좀비감염경로코드",
 ]
 
 COMPARISON_CASES = [
@@ -134,6 +140,37 @@ def generate():
         for r in cur.fetchall():
             cases.append({
                 "category": "multi_variant",
+                "question": f"{r['term_name']} 컬럼 데이터타입이 뭐야?",
+                "expect_type": r["data_type"],
+                "expect_length": r["data_length"],
+                "expect_domain": r["domain_name"],
+                "expect_abbr": r["term_abbr"],
+            })
+
+        # ── domain_conflict: 용어 자체는 도메인이 하나로 확정되지만, 같은 계열의
+        # 형제 도메인이 2개 이상 존재하는 경우 (예: 연월일시분초D/연월일시분초C14처럼
+        # 접미사만 다르고 설명이 거의 같아 벡터유사도로 형제 도메인이 컨텍스트에
+        # 같이 딸려와 혼동을 일으키는 케이스). multi_variant보다 넓은 접미사 패턴
+        # (단일 영문자+숫자, 예: D/C14/V20)으로 계열을 묶는다.
+        cur.execute("""
+            WITH fam AS (
+                SELECT domain_name, regexp_replace(domain_name, '[A-Z][0-9]*$', '') AS grp
+                FROM std_domain
+            ),
+            conflict AS (
+                SELECT grp FROM fam GROUP BY grp HAVING count(DISTINCT domain_name) >= 2
+            )
+            SELECT t.term_name, t.term_abbr, d.domain_name, d.data_type, d.data_length
+            FROM std_term t
+            JOIN std_domain d ON t.domain_name = d.domain_name
+            JOIN fam f ON f.domain_name = d.domain_name
+            JOIN conflict c ON c.grp = f.grp
+            ORDER BY random()
+            LIMIT %s
+        """, (N_DOMAIN_CONFLICT,))
+        for r in cur.fetchall():
+            cases.append({
+                "category": "domain_conflict",
                 "question": f"{r['term_name']} 컬럼 데이터타입이 뭐야?",
                 "expect_type": r["data_type"],
                 "expect_length": r["data_length"],
