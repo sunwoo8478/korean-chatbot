@@ -233,8 +233,8 @@ export default function Message({ msg, onOpenSource, compareType, convId, onDele
           )}
           {msg.content && (
             msg.streaming
-              ? <span style={{whiteSpace:'pre-wrap'}}>{msg.content}▌</span>
-              : <span dangerouslySetInnerHTML={{__html: parseMarkdown(msg.content)}} />
+              ? <span key="streaming" style={{whiteSpace:'pre-wrap'}}>{msg.content}▌</span>
+              : <span key="final" dangerouslySetInnerHTML={{__html: parseMarkdown(msg.content)}} />
           )}
         </div>
         {!msg.streaming && msg.content && (
