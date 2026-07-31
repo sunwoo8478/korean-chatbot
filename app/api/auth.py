@@ -1,5 +1,5 @@
 import hashlib, secrets, hmac
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel
 from typing import Optional
 from ..core.database import db_cursor
@@ -7,23 +7,44 @@ from ..core.database import db_cursor
 router = APIRouter()
 
 
-def require_admin(authorization: str = Header(default="")):
+def _audit_admin_action(cur, username: str, request: Optional[Request]) -> None:
+    """상태를 바꾸는 관리자 요청(POST/PATCH/DELETE)만 감사로그에 남긴다.
+    GET은 조회일 뿐이라 제외 — 로그가 실제 변경 이력 추적에 쓸모있게 유지."""
+    if request is None or request.method not in ("POST", "PATCH", "DELETE"):
+        return
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            method TEXT NOT NULL,
+            path TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    cur.execute(
+        "INSERT INTO admin_audit_log (username, method, path) VALUES (%s, %s, %s)",
+        (username, request.method, request.url.path),
+    )
+
+
+def require_admin(request: Request, authorization: str = Header(default="")):
     """관리자 전용 엔드포인트 의존성 — 세션 토큰이 is_admin=true 유저 것인지 확인.
     이전엔 admin.py의 38개 라우트와 auth.py의 사용자 관리 라우트가 전혀 인증 체크가
     없어서 누구나(로그인조차 없이) 전체 유저 목록 조회, 비밀번호 변경, 계정 삭제,
-    시스템 프롬프트 수정 등이 가능했음."""
+    시스템 프롬프트 수정 등이 가능했음. 상태 변경 요청은 감사로그(admin_audit_log)에도 남긴다."""
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(401, "인증이 필요합니다.")
     with db_cursor() as cur:
         cur.execute("""
-            SELECT u.is_admin FROM user_sessions s
+            SELECT u.is_admin, u.username FROM user_sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token=%s AND s.expires_at > NOW()
         """, (token,))
         row = cur.fetchone()
-    if not row or not row["is_admin"]:
-        raise HTTPException(403, "관리자 권한이 필요합니다.")
+        if not row or not row["is_admin"]:
+            raise HTTPException(403, "관리자 권한이 필요합니다.")
+        _audit_admin_action(cur, row["username"], request)
 
 
 def get_current_username(authorization: str = Header(default="")) -> str:
