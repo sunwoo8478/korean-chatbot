@@ -88,24 +88,38 @@ def score(case: dict, answer: str) -> dict:
     return {"verdict": verdict, "note": note}
 
 
+MAX_WORKERS = 4  # 로컬 Ollama가 gemma3:12b를 완전히 VRAM에 상주시켜두고 있어
+                 # 어느 정도 동시요청을 처리함 — 순차 대비 실측 필요, 과하면
+                 # 다시 줄일 것
+
+
+def _run_one(i, total, case):
+    t0 = time.time()
+    try:
+        answer = ask(case["question"], history=case.get("history"))
+        err = None
+    except Exception as e:
+        answer = ""
+        err = f"{type(e).__name__}: {e}"
+    elapsed = time.time() - t0
+
+    sc = {"verdict": "ERROR", "note": err} if err else score(case, answer)
+    result = {**case, "answer": answer, "elapsed_s": round(elapsed, 1), **sc}
+    print(f"[{i}/{total}] {case['category']:14s} {sc['verdict']:20s} ({elapsed:.1f}s) — {case['question']}")
+    return i, result
+
+
 def main():
     with open("scripts/golden_eval/golden_set.json", encoding="utf-8") as f:
         cases = json.load(f)
 
-    results = []
-    for i, case in enumerate(cases, 1):
-        t0 = time.time()
-        try:
-            answer = ask(case["question"], history=case.get("history"))
-            err = None
-        except Exception as e:
-            answer = ""
-            err = f"{type(e).__name__}: {e}"
-        elapsed = time.time() - t0
-
-        sc = {"verdict": "ERROR", "note": err} if err else score(case, answer)
-        results.append({**case, "answer": answer, "elapsed_s": round(elapsed, 1), **sc})
-        print(f"[{i}/{len(cases)}] {case['category']:14s} {sc['verdict']:20s} ({elapsed:.1f}s) — {case['question']}")
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results = [None] * len(cases)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(_run_one, i, len(cases), case) for i, case in enumerate(cases, 1)]
+        for fut in as_completed(futures):
+            i, result = fut.result()
+            results[i - 1] = result
 
     with open("scripts/golden_eval/report.json", "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
