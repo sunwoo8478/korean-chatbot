@@ -8,15 +8,11 @@ from fastapi import HTTPException, Request
 _buckets: dict[str, list[float]] = defaultdict(list)
 
 
-def _client_key(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
-
-
 def rate_limiter(max_requests: int, window_seconds: int = 60):
     """max_requests회 / window_seconds초 를 초과하면 429를 던지는 FastAPI 의존성 팩토리"""
 
     async def _check(request: Request):
-        key = _client_key(request)
+        key = request.client.host if request.client else "unknown"
         now = time.monotonic()
         cutoff = now - window_seconds
         window = _buckets[key]

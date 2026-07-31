@@ -2,20 +2,6 @@ from ..core.database import db_cursor
 from ..core.config import settings
 
 
-def _substr_candidates_sql(param_idx: int = 1) -> str:
-    """쿼리에서 2~8자 부분 문자열을 모두 생성하는 CTE SQL 반환"""
-    p = "%s"
-    return f"""
-        WITH candidates AS (
-            SELECT DISTINCT substring({p}, i, len) AS cand
-            FROM generate_series(1, length({p})) i,
-                 generate_series(2, 8) len
-            WHERE i + len - 1 <= length({p})
-              AND length(trim(substring({p}, i, len))) >= 2
-        )
-    """
-
-
 def retrieve(embedding: list[float], query_text: str = "") -> dict:
     vec_str = "[" + ",".join(map(str, embedding)) + "]"
     top_k = settings.rag_top_k
