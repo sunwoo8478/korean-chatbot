@@ -71,6 +71,38 @@ def _enrich_domains(docs: list[dict], query: str) -> list[dict]:
 
     return docs
 
+
+def _resolve_source_conflicts(docs: list[dict], subject: str) -> list[dict]:
+    """신뢰도 계층 원칙: 정확매칭(구조화 DB) > PDF 파싱 > 벡터유사도.
+
+    질문 주어와 완전히 일치하는 문서를 찾았을 때(has_exact_subject_match)만
+    호출된다. 이 경우 이미 신뢰할 수 있는 답이 확보된 것이므로, 같은 필드를
+    두고 상충할 수 있는 저신뢰 소스는 컨텍스트에서 제거해 모델이 헷갈리지 않게
+    한다:
+    1. PDF 매뉴얼/고시 — OCR 텍스트에 여러 용어가 뒤섞여 노이즈가 심함
+       (예: 우편번호를 물었는데 같은 페이지의 여권번호 값과 헷갈리는 경우)
+    2. 벡터유사도로 별도 유입된 형제 도메인 — 주어 문서가 실제로 참조하는
+       도메인이 아닌 다른 공통표준도메인 문서 (예: "말소일시"→연월일시분초D인데
+       의미가 거의 같은 연월일시분초C14가 유사도로 같이 딸려오는 경우)
+
+    한계: 필드 단위(도메인명)로만 판정하는 휴리스틱이라, 사전(동음이의어) 등
+    다른 소스 조합에서 벌어지는 유사한 충돌은 아직 못 잡는다 — 발견되는 대로
+    이 함수에 케이스를 추가한다.
+    """
+    import re
+    filtered = [d for d in docs if d.get("source") not in ("PDF매뉴얼", "PDF고시")]
+
+    subject_doc = next((d for d in filtered if d.get("title") == subject), None)
+    if subject_doc:
+        ref_domains = set(re.findall(r'\[도메인:\s*([^\]]+)\]', subject_doc.get("content", "")))
+        if ref_domains:
+            filtered = [
+                d for d in filtered
+                if d.get("source") != "공통표준도메인" or d.get("title") in ref_domains
+            ]
+
+    return filtered
+
 SYSTEM_PROMPT = """당신은 **Korean Knowledge Assistant**입니다.
 
 ## 시스템 정보
@@ -363,20 +395,7 @@ def run(query: str, conv_id: Optional[str] = None) -> dict:
     # PDF가 유일한 단서일 수 있으니 그대로 둔다.
     context_docs = final_docs
     if has_exact_subject_match:
-        context_docs = [d for d in final_docs if d.get("source") not in ("PDF매뉴얼", "PDF고시")]
-
-        # 벡터 검색(순수 임베딩 유사도)이 정확 일치한 주어와 무관한 형제 도메인을
-        # 별도로 끌어오는 경우가 있다(예: "말소일시"→연월일시분초D인데, 의미가 거의
-        # 같은 연월일시분초C14도 유사도로 같이 딸려와서 모델이 데이터타입을 혼동함).
-        # 주어 문서가 실제로 참조하는 도메인만 남기고 나머지 공통표준도메인 문서는 제외.
-        subject_doc = next((d for d in context_docs if d.get("title") == subject), None)
-        if subject_doc:
-            ref_domains = set(_re3.findall(r'\[도메인:\s*([^\]]+)\]', subject_doc.get("content", "")))
-            if ref_domains:
-                context_docs = [
-                    d for d in context_docs
-                    if d.get("source") != "공통표준도메인" or d.get("title") in ref_domains
-                ]
+        context_docs = _resolve_source_conflicts(final_docs, subject)
 
     context = group_context(context_docs)
 
