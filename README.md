@@ -21,7 +21,7 @@
 | 백엔드 | FastAPI, PostgreSQL, pgvector, Pydantic Settings |
 | 프런트엔드 | React 19, Vite, Tailwind CSS, Mermaid |
 | 운영 | PM2, request log, admin API, runtime model setting |
-| 문서 | [Architecture](./docs/ARCHITECTURE.md), [Operations](./docs/OPERATIONS.md), [Security](./SECURITY.md) |
+| 문서 | [Architecture](./docs/ARCHITECTURE.md), [Operations](./docs/OPERATIONS.md), [Security](./SECURITY.md), [개발 블로그](https://sunwoomjc.tistory.com/9) |
 
 ## 프로젝트 목표
 
